@@ -1,0 +1,8 @@
+BE/middleware/
+BE/node_modules/
+BE/routes/
+BE/models/
+FE/src/components/
+FE/src/layouts/
+
+.env
