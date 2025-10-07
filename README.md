@@ -36,7 +36,7 @@ Hệ thống bao gồm:
 ### 1. Clone repo
 ```bash
 git clone https://github.com/username/restaurant-booking-app.git
-cd restaurant-booking-app
+cd e-commerce-restaurant
 
 # Chạy BE
 cd BE
