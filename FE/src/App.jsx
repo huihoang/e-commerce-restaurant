@@ -11,7 +11,7 @@ import Contact from "./component/HomePage/Contact";
 import Auth from "./component/HomePage/Auth";
 import Book from "./component/HomePage/Book";
 import Blog from "./component/HomePage/Blog";
-import Manu from "./component/HomePage/Manu";
+import Menu from "./component/HomePage/Menu";
 import About from "./component/HomePage/About";
 import LayoutOne from "./Layout/LayoutOne";
 import AdminDashboard from "./component/Admin/AdminDashboard";
@@ -24,7 +24,7 @@ const getRouter = (setIsLoggedIn, setRole) =>
     createRoutesFromElements(
       <Route path="/" element={<LayoutOne />}>
         <Route index element={<Homepage />} />
-        <Route path="/manu" element={<Manu />} />
+        <Route path="/menu" element={<Menu />} />
         <Route path="/about" element={<About />} />
         <Route path="/contact" element={<Contact />} />
         <Route

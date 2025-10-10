@@ -35,7 +35,7 @@ const Homepage = () => {
                 Đặt bàn
               </button>
             </Link>
-            <Link to="/manu">
+            <Link to="/menu">
               <button className="px-8 py-5 border-2 border-[#2C2F24] rounded-full hover:bg-[#AD343E] hover:text-white hover:border-[#AD343E] transition duration-200">
                 Khám phá thực đơn
               </button>
@@ -44,7 +44,7 @@ const Homepage = () => {
         </div>
       </section>
 
-      {/* ================= Manu Browser part ================= */}
+      {/* ================= Menu Browser part ================= */}
       <section className="container pt-[92px] pb-[120px]">
         <h2 className="font-PlayfairD font-medium text-[55px] leading-[60px] text-[#2C2F24] text-center">
           Danh Sách Thực Đơn
@@ -62,7 +62,7 @@ const Homepage = () => {
             <li className="font-DM_sans font-normal text-base leading-6">
               Các món ngon dành cho ăn sáng đậm vị.
             </li>
-            <Link to="/manu">
+            <Link to="/menu">
               <button className="px-4 py-1 border-2 rounded-full border-[#AD343E] font-DM_sans font-bold text-[#AD343E] hover:text-white hover:bg-[#AD343E] hover:border-white duration-300">
                 Khám phá
               </button>
@@ -80,7 +80,7 @@ const Homepage = () => {
             <li className="font-DM_sans font-normal text-base leading-6">
               Các món ngon dành cho bữa trưa đậm vị.
             </li>
-            <Link to="/manu">
+            <Link to="/menu">
               <button className="px-4 py-1 border-2 rounded-full border-[#AD343E] font-DM_sans font-bold text-[#AD343E] hover:text-white hover:bg-[#AD343E] hover:border-white duration-300">
                 Khám phá
               </button>
@@ -98,7 +98,7 @@ const Homepage = () => {
             <li className="font-DM_sans font-normal text-base leading-6">
               Các thức uống ngon thơm mát từ ba miền
             </li>
-            <Link to="/manu">
+            <Link to="/menu">
               <button className="px-4 py-1 border-2 rounded-full border-[#AD343E] font-DM_sans font-bold text-[#AD343E] hover:text-white hover:bg-[#AD343E] hover:border-white duration-300">
                 Khám phá
               </button>
@@ -116,7 +116,7 @@ const Homepage = () => {
             <li className="font-DM_sans font-normal text-base leading-6">
               Các loại thức bánh và tráng miệng thơm ngon.
             </li>
-            <Link to="/manu">
+            <Link to="/menu">
               <button className="px-4 py-1 border-2 rounded-full border-[#AD343E] font-DM_sans font-bold text-[#AD343E] hover:text-white hover:bg-[#AD343E] hover:border-white duration-300">
                 Khám phá
               </button>

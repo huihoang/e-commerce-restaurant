@@ -36,7 +36,7 @@ const Footer = () => {
                         <li className=' flex flex-col gap-5 font-DM_sans font-normal text-base mt-10 '>
                             <Link to = "/" className='hover:text-red-400'>Trang chủ</Link>
                             <Link to = "/about" className='hover:text-red-400'>Giới thiệu</Link>
-                            <Link to = "/manu" className='hover:text-red-400'>Thực Đơn</Link>
+                            <Link to = "/menu" className='hover:text-red-400'>Thực Đơn</Link>
                             <Link to = "/blog" className='hover:text-red-400'>Bài Viết</Link>
                             <Link to = "/contact" className='hover:text-red-400'>Liên Hệ</Link>
                             <Link to = "#" className='hover:text-red-400'>Giao Hàng</Link>
