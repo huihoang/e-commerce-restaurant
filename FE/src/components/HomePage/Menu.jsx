@@ -65,10 +65,9 @@ const Menu = () => {
               key={cat}
               onClick={() => handleFilter(cat)}
               className={`w-[150px] h-12 rounded-full border-2 transition duration-400
-                ${
-                  selectedCategory === cat
-                    ? "bg-[#AD343E] text-white"
-                    : "hover:bg-[#AD343E] hover:text-white"
+                ${selectedCategory === cat
+                  ? "bg-[#AD343E] text-white"
+                  : "hover:bg-[#AD343E] hover:text-white"
                 }`}
             >
               {cat}

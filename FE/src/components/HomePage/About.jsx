@@ -1,10 +1,9 @@
 // ==================== All Import
-import React                     from 'react'
-import { BsAlarm }               from 'react-icons/bs'
-import { IoIosMail }             from 'react-icons/io'
-import { GrMultiple }            from 'react-icons/gr'
-import { RiWindowLine }          from 'react-icons/ri'
-import { HiOutlineMapPin }       from 'react-icons/hi2'
+import { BsAlarm } from 'react-icons/bs'
+import { IoIosMail } from 'react-icons/io'
+import { GrMultiple } from 'react-icons/gr'
+import { RiWindowLine } from 'react-icons/ri'
+import { HiOutlineMapPin } from 'react-icons/hi2'
 import { FaGooglePlay, FaPhone } from 'react-icons/fa'
 
 const About = () => {
@@ -23,7 +22,7 @@ const About = () => {
                             (084)0244556624
                         </a>
                         <a href='#' className='font-DM_sans text-base font-normal flex items-center hover:text-red-200'>
-                            < IoIosMail className='text-xl mr-5' /> 
+                            < IoIosMail className='text-xl mr-5' />
                             bachkhoa@hcmut.edu.vn
                         </a>
                         <a href='#' className='font-DM_sans text-base font-normal flex hover:text-red-200'>
@@ -36,13 +35,13 @@ const About = () => {
                 {/* ---------- About Banner Info Part ---------- */}
                 <ul className='w-[560px] flex flex-col gap-6 justify-start'>
                     <h3 className='font-PlayfairD font-medium text-[55px] leading-[60px]'>
-                    Chúng tôi cung cấp bữa ăn ngon cho gia đình.
+                        Chúng tôi cung cấp bữa ăn ngon cho gia đình.
                     </h3>
                     <p className='font-DM_sans font-medium text-lg text-[#2C2F24]'>
-                    Câu chuyện của chúng tôi bắt đầu với một tầm nhìn tạo ra một trải nghiệm ẩm thực độc đáo, kết hợp giữa ẩm thực cao cấp, dịch vụ xuất sắc và không gian sôi động. Được hình thành từ nền văn hóa ẩm thực phong phú của thành phố, chúng tôi mong muốn tôn vinh cội nguồn địa phương trong khi hòa quyện với khẩu vị toàn cầu.
+                        Câu chuyện của chúng tôi bắt đầu với một tầm nhìn tạo ra một trải nghiệm ẩm thực độc đáo, kết hợp giữa ẩm thực cao cấp, dịch vụ xuất sắc và không gian sôi động. Được hình thành từ nền văn hóa ẩm thực phong phú của thành phố, chúng tôi mong muốn tôn vinh cội nguồn địa phương trong khi hòa quyện với khẩu vị toàn cầu.
                     </p>
                     <p className='font-DM_sans font-normal text-base text-[#414536]'>
-                    Tại đây, chúng tôi tin rằng việc thưởng thức ẩm thực không chỉ đơn thuần là món ăn, mà còn là toàn bộ trải nghiệm. Đội ngũ nhân viên của chúng tôi, nổi tiếng với sự thân thiện và tận tâm, luôn nỗ lực để biến mỗi lần ghé thăm thành một kỷ niệm khó quên.
+                        Tại đây, chúng tôi tin rằng việc thưởng thức ẩm thực không chỉ đơn thuần là món ăn, mà còn là toàn bộ trải nghiệm. Đội ngũ nhân viên của chúng tôi, nổi tiếng với sự thân thiện và tận tâm, luôn nỗ lực để biến mỗi lần ghé thăm thành một kỷ niệm khó quên.
                     </p>
                 </ul>
             </section>
@@ -60,7 +59,7 @@ const About = () => {
             <section className='container flex justify-between py-20'>
 
                 {/* ------ multi benefit ------ */}
-                <div className='w-[366px] flex gap-7'> 
+                <div className='w-[366px] flex gap-7'>
                     <GrMultiple className='text-4xl mt-[-4px]' />
                     <ul>
                         <li className='font-DM_sans font-bold text-xl'>Đa dạng món ăn</li>
@@ -69,7 +68,7 @@ const About = () => {
                 </div>
 
                 {/* ------ order benefit ------ */}
-                <div className='w-[366px] flex gap-7'> 
+                <div className='w-[366px] flex gap-7'>
                     <RiWindowLine className='text-4xl mt-[-4px]' />
                     <ul>
                         <li className='font-DM_sans font-bold text-xl'>Dễ dàng đặt món</li>
@@ -78,7 +77,7 @@ const About = () => {
                 </div>
 
                 {/* ------ delivery benefit ------ */}
-                <div className='w-[366px] flex gap-7'> 
+                <div className='w-[366px] flex gap-7'>
                     <BsAlarm className='text-4xl mt-[-4px]' />
                     <ul>
                         <li className='font-DM_sans font-bold text-xl'>Giao hàng nhanh</li>
@@ -93,7 +92,7 @@ const About = () => {
                     <ul className='w-[610px]'>
                         <h1 className='font-PlayfairD font-medium text-[55px] leading-[60px]'>Một số thông tin về chúng tôi</h1>
                         <p className='font-DM_sans font-normal text-base mt-5'>Câu chuyện của chúng tôi bắt đầu với một tầm nhìn tạo ra một trải nghiệm ẩm thực độc đáo, kết hợp giữa ẩm thực cao cấp, dịch vụ xuất sắc và không gian sôi động. Được hình thành từ nền văn hóa ẩm thực phong phú của thành phố, chúng tôi mong muốn tôn vinh cội nguồn địa phương trong khi hòa quyện với khẩu vị toàn cầu.</p>
-                        
+
                         {/* ---------- inside info ---------- */}
                         <ul className='flex flex-wrap gap-6 mt-[60px]'>
 
@@ -149,7 +148,7 @@ const About = () => {
                                 <li className='font-DM_sans font-bold text-base'>Thanh Nga</li>
                                 <li className='font-DM_sans font-normal text-base'>Quận 3</li>
                             </ul>
-                        </ul>   
+                        </ul>
                     </ul>
 
                     {/* ------ reviewer ------ */}
@@ -162,7 +161,7 @@ const About = () => {
                                 <li className='font-DM_sans font-bold text-base'>Thanh Nga</li>
                                 <li className='font-DM_sans font-normal text-base'>Quận 3</li>
                             </ul>
-                        </ul>   
+                        </ul>
                     </ul>
 
                     {/* ------ reviewer ------ */}
@@ -175,7 +174,7 @@ const About = () => {
                                 <li className='font-DM_sans font-bold text-base'>Thanh Nga</li>
                                 <li className='font-DM_sans font-normal text-base'>Quận 3</li>
                             </ul>
-                        </ul>   
+                        </ul>
                     </ul>
                 </div>
             </section>

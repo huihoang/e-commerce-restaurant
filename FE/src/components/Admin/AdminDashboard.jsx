@@ -50,11 +50,10 @@ const AdminDashboard = ({ onLogout }) => {
           <button
             key={item}
             onClick={() => setSelectedSection(item)}
-            className={`block w-full text-left px-4 py-2 rounded-lg ${
-              selectedSection === item
-                ? "bg-blue-600 text-white"
-                : "hover:bg-blue-100 text-gray-800"
-            } transition duration-200`}
+            className={`block w-full text-left px-4 py-2 rounded-lg ${selectedSection === item
+              ? "bg-blue-600 text-white"
+              : "hover:bg-blue-100 text-gray-800"
+              } transition duration-200`}
           >
             {item}
           </button>
@@ -64,19 +63,13 @@ const AdminDashboard = ({ onLogout }) => {
         <button
           onClick={onLogout}
           className="mt-6 w-full bg-red-600 text-white py-2 rounded-lg hover:bg-red-500 transition duration-200"
-        >
-          🚪 Đăng Xuất
-        </button>
+        >🚪 Đăng Xuất </button>
       </aside>
 
       {/* Main content */}
       <main className="flex-1 p-10">
-        <h1 className="text-2xl font-semibold text-blue-700 mb-4">
-          {selectedSection}
-        </h1>
-        <div className="bg-white border rounded-xl p-6 shadow-md">
-          {renderSection()}
-        </div>
+        <h1 className="text-2xl font-semibold text-blue-700 mb-4">{selectedSection}</h1>
+        <div className="bg-white border rounded-xl p-6 shadow-md">{renderSection()}</div>
       </main>
     </div>
   );

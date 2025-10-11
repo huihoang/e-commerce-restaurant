@@ -1,7 +1,6 @@
 // ==================== All Import
-import React            from 'react'
-import { Link }         from 'react-router-dom'
-import { FaFacebookF, FaGithub, FaInstagram, FaTwitter } from 'react-icons/fa'
+import { Link } from 'react-router-dom';
+import { FaFacebookF, FaGithub, FaInstagram, FaTwitter } from 'react-icons/fa';
 
 const Footer = () => {
     return (
@@ -12,7 +11,7 @@ const Footer = () => {
                     <ul className='flex flex-col gap-[30px] text-white'>
 
                         {/* ------- Footer Logo ------- */}
-                        <Link to = '/' className='flex items-center '>
+                        <Link to='/' className='flex items-center '>
                             <img src="/footerLogo.png" alt="footer_logo_Image" />
                             <h3 className='ml-3 font-PlayfairD font-semibold text-[33px] italic leading-[30px]'>Nhà Hàng Việt</h3>
                         </Link>
@@ -34,12 +33,12 @@ const Footer = () => {
                     <ul className='text-white'>
                         <h4 className='font-DM_sans font-bold text-base'>Trang</h4>
                         <li className=' flex flex-col gap-5 font-DM_sans font-normal text-base mt-10 '>
-                            <Link to = "/" className='hover:text-red-400'>Trang chủ</Link>
-                            <Link to = "/about" className='hover:text-red-400'>Giới thiệu</Link>
-                            <Link to = "/menu" className='hover:text-red-400'>Thực Đơn</Link>
-                            <Link to = "/blog" className='hover:text-red-400'>Bài Viết</Link>
-                            <Link to = "/contact" className='hover:text-red-400'>Liên Hệ</Link>
-                            <Link to = "#" className='hover:text-red-400'>Giao Hàng</Link>
+                            <Link to="/" className='hover:text-red-400'>Trang chủ</Link>
+                            <Link to="/about" className='hover:text-red-400'>Giới thiệu</Link>
+                            <Link to="/menu" className='hover:text-red-400'>Thực Đơn</Link>
+                            <Link to="/blog" className='hover:text-red-400'>Bài Viết</Link>
+                            <Link to="/contact" className='hover:text-red-400'>Liên Hệ</Link>
+                            <Link to="#" className='hover:text-red-400'>Giao Hàng</Link>
                         </li>
                     </ul>
 
@@ -47,8 +46,8 @@ const Footer = () => {
                     <ul className='text-white'>
                         <h4 className='font-DM_sans font-bold text-base'>Hỗ trợ kỹ thuật</h4>
                         <li className=' flex flex-col gap-5 font-DM_sans font-normal text-base mt-10 '>
-                            <Link to = "#" className='hover:text-red-400'>Chi Nhánh</Link>
-                            <Link to = "#" className='hover:text-red-400'>Đại Lý</Link>
+                            <Link to="#" className='hover:text-red-400'>Chi Nhánh</Link>
+                            <Link to="#" className='hover:text-red-400'>Đại Lý</Link>
                         </li>
                     </ul>
 
@@ -65,10 +64,10 @@ const Footer = () => {
                 </ul>
 
                 {/* ================= Copy-Right Part ================= */}
-                <p className='mt-[130px] text-[#ADB29E] text-base font-DM_sans font-normal text-center'>Copyright © 2025 Hcmut. All Rights Reserved</p>  
+                <p className='mt-[130px] text-[#ADB29E] text-base font-DM_sans font-normal text-center'>Copyright © 2025 Hcmut. All Rights Reserved</p>
             </footer>
         </>
-    )
+    );
 };
 
 export default Footer;
