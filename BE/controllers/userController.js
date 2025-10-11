@@ -1,6 +1,6 @@
 const User = require('../models/User')
 
-const getUser = async (res, req) => {
+const getUser = async (req, res) => {
     try {
         const user = await User.findById(req.user.id).select('-password') // Không trả về password
         if (!user) return res.status(404).json({ message: 'Người dùng không tồn tại' })

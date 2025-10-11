@@ -1,3 +1,6 @@
+const express = require("express");
+const router = express.Router();
+
 const authRoutes = require("./authRoutes");
 const userRoutes = require("./userRoutes");
 const menuRoutes = require("./menuRoutes");
@@ -6,10 +9,12 @@ const blogRoutes = require("./blogRoutes");
 const adminbookingsRoutes = require("./adminBookingRoutes");
 const contactRoutes = require("./contactRoutes");
 
-app.use("/api", authRoutes);
-app.use("/api/users", userRoutes);
-app.use("/api/menus", menuRoutes);
-app.use("/api/bookings", bookingsRoutes);
-app.use("/api/blogs", blogRoutes);
-app.use("/api/admin/bookings", adminbookingsRoutes);
-app.use("/api/contact", contactRoutes);
+router.use("/api", authRoutes);
+router.use("/api/users", userRoutes);
+router.use("/api/menus", menuRoutes);
+router.use("/api/bookings", bookingsRoutes);
+router.use("/api/blogs", blogRoutes);
+router.use("/api/admin/bookings", adminbookingsRoutes);
+router.use("/api/contact", contactRoutes);
+
+module.exports = router;
