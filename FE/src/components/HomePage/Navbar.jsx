@@ -3,7 +3,7 @@ import React from 'react'
 import { IoIosMail } from 'react-icons/io';
 import { Link } from 'react-router-dom';
 import ScrollToTop from './ScrollToTop';
-import { FaFacebookF, FaGithub, FaInstagram, FaPhone, FaTwitter } from 'react-icons/fa';
+import { FaFacebookF, FaInstagram, FaPhone, FaTwitter } from 'react-icons/fa';
 
 const Navbar = () => {
     return (
@@ -13,22 +13,6 @@ const Navbar = () => {
 
             {/* ================== Top Navbar Part ================== */}
             <nav className='w-full sticky top-0 z-50'>
-                <header className='py-2 bg-[#474747]'>
-                    <ul className='container flex justify-between'>
-                        <ul className='flex gap-6 text-white font-DM_sans text-base font-normal'>
-                            <li className='flex items-center gap-1'><FaPhone />(084)0244556624</li>
-                            <li className='flex items-center gap-1'><IoIosMail /> bachkhoa@hcmut.edu.vn</li>
-                        </ul>
-
-                        {/* ---------- All Social Link ---------- */}
-                        <ul className='flex gap-4'>
-                            <a href='#' className='p-[8px] bg-[#f9f9f746] hover:bg-[#f9f9f783] text-white rounded-full'><FaTwitter /></a>
-                            <a href='#' className='p-[8px] bg-[#f9f9f746] hover:bg-[#f9f9f783] text-white rounded-full'><FaFacebookF /></a>
-                            <a href='#' className='p-[8px] bg-[#f9f9f746] hover:bg-[#f9f9f783] text-white rounded-full'><FaInstagram /></a>
-                        </ul>
-                    </ul>
-                </header>
-
                 {/* ================== Main Navbar Part ================== */}
                 <main className='py-4 border-b-2 bg-[#F9F9F7]'>
                     <ul className='container flex justify-between'>
@@ -36,7 +20,7 @@ const Navbar = () => {
                         {/* ---------- Logo Part ---------- */}
                         <Link to="/" className='flex gap-4 items-center '>
                             <img src="/Logo.png" alt="Logo_image" />
-                            <h1 className='font-PlayfairD font-semibold text-[42px] italic text-[#474747] '>Nhà Hàng Việt</h1>
+                            <h1 className='font-PlayfairD font-semibold text-[42px] italic text-[#474747] '>BK Restaurant</h1>
                         </Link>
 
                         {/* ---------- All Pages Link ---------- */}

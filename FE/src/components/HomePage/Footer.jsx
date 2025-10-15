@@ -1,25 +1,28 @@
 // ==================== All Import
 import { Link } from 'react-router-dom';
-import { FaFacebookF, FaGithub, FaInstagram, FaTwitter } from 'react-icons/fa';
+import { FaFacebookF, FaInstagram, FaTwitter, FaPhone } from 'react-icons/fa';
+import { IoIosMail } from 'react-icons/io';
 
 const Footer = () => {
     return (
         <>
             {/* ================= Footer Part ================= */}
-            <footer className='mt-[125px] w-full bg-[#474747] px-[150px] pt-[120px] pb-[55px]'>
-                <ul className=' flex justify-between'>
+            <footer className='w-full bg-[#474747] py-[2%] mt-20'>
+                <ul className='flex justify-evenly'>
                     <ul className='flex flex-col gap-[30px] text-white'>
 
                         {/* ------- Footer Logo ------- */}
                         <Link to='/' className='flex items-center '>
                             <img src="/footerLogo.png" alt="footer_logo_Image" />
-                            <h3 className='ml-3 font-PlayfairD font-semibold text-[33px] italic leading-[30px]'>Nhà Hàng Việt</h3>
+                            <h3 className='ml-3 font-PlayfairD font-semibold text-[33px] italic leading-[30px]'>BK Restaurant</h3>
                         </Link>
 
                         {/* ------- Footer Info ------- */}
                         <li>
-                            Tinh hoa ẩm thực việt vào trong từng món ăn
+                            "Tinh hoa ẩm thực vào trong từng món ăn"
                         </li>
+                        <li className='flex items-center gap-3'><FaPhone className='text-[#AD343E]' /> <span>+84 123 456 789</span></li>
+                        <li className='flex items-center gap-3'><IoIosMail className='text-[#AD343E]' /> <span>bachkhoa@hcmut.edu.vn</span></li>
 
                         {/* ------- All Social Links ------- */}
                         <li className='flex gap-3'>
@@ -29,32 +32,21 @@ const Footer = () => {
                         </li>
                     </ul>
 
-                    {/* ================= All Pages Link Part ================= */}
-                    <ul className='text-white'>
-                        <h4 className='font-DM_sans font-bold text-base'>Trang</h4>
-                        <li className=' flex flex-col gap-5 font-DM_sans font-normal text-base mt-10 '>
-                            <Link to="/" className='hover:text-red-400'>Trang chủ</Link>
-                            <Link to="/about" className='hover:text-red-400'>Giới thiệu</Link>
-                            <Link to="/menu" className='hover:text-red-400'>Thực Đơn</Link>
-                            <Link to="/blog" className='hover:text-red-400'>Bài Viết</Link>
-                            <Link to="/contact" className='hover:text-red-400'>Liên Hệ</Link>
-                            <Link to="#" className='hover:text-red-400'>Giao Hàng</Link>
-                        </li>
-                    </ul>
-
                     {/* ================= All Utility Pages Link Part ================= */}
                     <ul className='text-white'>
-                        <h4 className='font-DM_sans font-bold text-base'>Hỗ trợ kỹ thuật</h4>
-                        <li className=' flex flex-col gap-5 font-DM_sans font-normal text-base mt-10 '>
+                        <h2 className='font-DM_sans font-bold text-base'>Thông tin thêm</h2>
+                        <li className='flex flex-col gap-5 font-DM_sans font-normal text-base mt-10'>
                             <Link to="#" className='hover:text-red-400'>Chi Nhánh</Link>
                             <Link to="#" className='hover:text-red-400'>Đại Lý</Link>
+                            <Link to="#" className='hover:text-red-400'>Chính sách bảo mật</Link>
+                            <Link to="#" className='hover:text-red-400'>Điều khoản dịch vụ</Link>
                         </li>
                     </ul>
 
                     {/* ================= Footer Images Part ================= */}
                     <ul>
                         <a href='#' className='text-white font-DM_sans font-bold text-base hover:text-red-300 duration-200'>Theo dõi chúng tôi trên Instagram</a>
-                        <li className='w-[405px] mt-10 flex flex-wrap gap-3'>
+                        <li className='w-[410px] mt-10 flex flex-wrap gap-3'>
                             <img src="/footerImg1.png" alt="footer_img1" className='hover:scale-105 duration-300' />
                             <img src="/footerImg2.png" alt="footer_img2" className='hover:scale-105 duration-300' />
                             <img src="/footerImg3.png" alt="footer_img3" className='hover:scale-105 duration-300' />

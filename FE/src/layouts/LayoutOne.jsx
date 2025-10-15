@@ -1,6 +1,6 @@
 import { Outlet } from 'react-router-dom';
-import Navbar from '../../../../HomePage/Navbar';
-import Footer from '../../../../HomePage/Footer';
+import Navbar from '@/components/HomePage/Navbar';
+import Footer from '@/components/HomePage/Footer';
 
 const LayoutOne = () => {
     return (

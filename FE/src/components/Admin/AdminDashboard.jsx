@@ -1,9 +1,9 @@
 // ==================== All Import
-import React, { useState, useEffect } from "react";
+import { useState, useEffect } from "react";
 import UserAdmin from "./AdminUserManager";
-import MenuAdmin from "../../../../../Admin/AdminMenuManager";
-import BlogAdmin from "../../../../../Admin/AdminBlogList";
-import BookingAdmin from "../../../../../Admin/AdminBookingList";
+import MenuAdmin from "@/components/Admin/AdminMenuManager";
+import BlogAdmin from "@/components/Admin/AdminBlogList";
+import BookingAdmin from "@/components/Admin/AdminBookingList";
 import ContactList from "./AdminContactList";
 
 // ==================== All Components

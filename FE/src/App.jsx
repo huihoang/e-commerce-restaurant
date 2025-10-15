@@ -6,17 +6,17 @@ import {
   Route,
   RouterProvider,
 } from "react-router-dom";
-import Homepage from "./component/HomePage/Homepage";
-import Contact from "./component/HomePage/Contact";
-import Auth from "./component/HomePage/Auth";
-import Book from "./component/HomePage/Book";
-import Blog from "./component/HomePage/Blog";
-import Menu from "./component/HomePage/Menu";
-import About from "./component/HomePage/About";
-import LayoutOne from "./Layout/LayoutOne";
-import AdminDashboard from "./component/Admin/AdminDashboard";
-import UserDashboard from "./component/User/UserDashboard";
-import BlogDetails from "./component/HomePage/BlogDetails"; // trang chi tiết
+import Homepage from "./components/HomePage/Homepage";
+import Contact from "./components/HomePage/Contact";
+import Auth from "./components/HomePage/Auth";
+import Book from "./components/HomePage/Book";
+import Blog from "./components/HomePage/Blog";
+import Menu from "./components/HomePage/Menu";
+import About from "./components/HomePage/About";
+import AdminDashboard from "./components/Admin/AdminDashboard";
+import UserDashboard from "./components/User/UserDashboard";
+import BlogDetails from "./components/HomePage/BlogDetails"; // trang chi tiết
+import LayoutOne from "./layouts/LayoutOne";
 
 // ==================== All Routes
 const getRouter = (setIsLoggedIn, setRole) =>
