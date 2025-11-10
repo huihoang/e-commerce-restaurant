@@ -4,16 +4,18 @@ import Footer from '@/components/HomePage/Footer';
 
 const LayoutOne = () => {
     return (
-        <>
+        <div className="min-h-screen">
             {/* ================= Navbar part ================= */}
             <Navbar />
 
-            {/* ================= Outlet part ================= */}
-            <Outlet />
+            {/* ================= Main Content ================= */}
+            <div className="bg-slate-100">
+                <Outlet />
+            </div>
 
             {/* ================= Footer part ================= */}
             <Footer />
-        </>
+        </div>
     );
 };
 
