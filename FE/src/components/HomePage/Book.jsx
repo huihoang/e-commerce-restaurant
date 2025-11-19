@@ -1,5 +1,5 @@
 // ==================== All Import
-import { useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 
 const Book = () => {
   // ==================== All Hooks
@@ -14,8 +14,21 @@ const Book = () => {
   const [person, setPerson] = useState(1);
   const [personError, setPersonError] = useState("");
   const [loading, setLoading] = useState(false); // Thêm state loading
+  const [menuOptions, setMenuOptions] = useState([]);
+  const [selectedDishes, setSelectedDishes] = useState([]);
   const API_BASE_URL =
     import.meta.env.VITE_API_BASE_URL || "http://localhost:5000";
+
+  useEffect(() => {
+    fetch(`${API_BASE_URL}/api/menus`)
+      .then((res) => res.json())
+      .then((data) => {
+        if (Array.isArray(data)) {
+          setMenuOptions(data);
+        }
+      })
+      .catch(() => {});
+  }, [API_BASE_URL]);
   // ==================== All Functions
   const handleDate = (e) => {
     setDate(e.target.value);
@@ -34,9 +47,49 @@ const Book = () => {
     setPhoneError("");
   };
   const handlePerson = (e) => {
-    setPerson(e.target.value);
+    const value = Number(e.target.value);
+    setPerson(value);
     setPersonError("");
   };
+
+  const handleToggleDish = (dish) => {
+    setSelectedDishes((prev) => {
+      const exists = prev.find((item) => item.dishId === dish._id);
+      if (exists) {
+        return prev.filter((item) => item.dishId !== dish._id);
+      }
+      return [
+        ...prev,
+        {
+          dishId: dish._id,
+          name: dish.name,
+          price: Number(dish.price) || 0,
+          quantity: 1,
+        },
+      ];
+    });
+  };
+
+  const handleDishQuantity = (dishId, nextQty) => {
+    const quantity = Math.max(1, Number(nextQty) || 1);
+    setSelectedDishes((prev) =>
+      prev.map((item) =>
+        item.dishId === dishId ? { ...item, quantity } : item
+      )
+    );
+  };
+
+  const personCount = Number(person) || 0;
+  const depositAmount =
+    personCount === 0 ? 0 : personCount > 6 ? 1000000 : 500000;
+  const selectedDishTotal = useMemo(
+    () =>
+      selectedDishes.reduce(
+        (sum, dish) => sum + dish.price * (dish.quantity || 1),
+        0
+      ),
+    [selectedDishes]
+  );
 
   // ==================== Submit Function Condition
   const handleSubmit = async (e) => {
@@ -59,8 +112,8 @@ const Book = () => {
       setPhoneError("Must Include Phone Number");
       hasError = true;
     }
-    if (person > 6) {
-      setPersonError("Sorry! No Booking for More Than 6 People");
+    if (!person || Number(person) < 1) {
+      setPersonError("Vui lòng nhập số lượng khách hợp lệ");
       hasError = true;
     }
 
@@ -74,7 +127,17 @@ const Book = () => {
         headers: {
           "Content-Type": "application/json",
         },
-        body: JSON.stringify({ date, time, name, phone, person }),
+        body: JSON.stringify({
+          date,
+          time,
+          name,
+          phone,
+          person,
+          selectedDishes: selectedDishes.map((dish) => ({
+            dishId: dish.dishId,
+            quantity: dish.quantity,
+          })),
+        }),
       });
 
       if (response.ok) {
@@ -88,6 +151,7 @@ const Book = () => {
         setName("");
         setPhone("");
         setPerson(1);
+        setSelectedDishes([]);
       } else {
         const errorData = await response.json();
         console.error("Booking failed:", errorData);
@@ -188,12 +252,121 @@ const Book = () => {
               </p>
               <input
                 onChange={handlePerson}
-                type="Number"
+                value={person}
+                type="number"
                 className="w-full h-[60px] rounded-full border-2 pl-4 mt-2 outline-none"
                 min={1}
               />
               <p className="font-DM_sans font-medium text-sm text-red-400 absolute top-0 right-5">
                 {personError}
+              </p>
+            </div>
+
+            <div className="p-6 border rounded-2xl bg-slate-50 space-y-4">
+              <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
+                <p className="font-DM_sans font-bold text-base">
+                  Chọn món phục vụ trước (tuỳ chọn)
+                </p>
+                <span className="text-sm text-slate-500">
+                  Bạn có thể bỏ qua bước này
+                </span>
+              </div>
+              <div className="grid sm:grid-cols-2 gap-3 max-h-72 overflow-y-auto pr-1">
+                {menuOptions.map((dish) => {
+                  const selected = selectedDishes.find(
+                    (item) => item.dishId === dish._id
+                  );
+                  return (
+                    <div
+                      key={dish._id}
+                      className={`border rounded-2xl p-3 bg-white shadow-sm ${
+                        selected ? "border-blue-500" : "border-slate-200"
+                      }`}
+                    >
+                      <label className="flex items-start gap-3 cursor-pointer">
+                        <div className="w-16 h-16 rounded-xl overflow-hidden flex-shrink-0 border bg-slate-100">
+                          <img
+                            src={dish.image}
+                            alt={dish.name}
+                            className="w-full h-full object-cover"
+                            loading="lazy"
+                          />
+                        </div>
+                        <input
+                          type="checkbox"
+                          checked={Boolean(selected)}
+                          onChange={() => handleToggleDish(dish)}
+                          className="mt-1"
+                        />
+                        <div className="flex-1">
+                          <p className="font-semibold text-slate-800">
+                            {dish.name}
+                          </p>
+                          <p className="text-sm text-blue-600 font-bold">
+                            {Number(dish.price).toLocaleString("vi-VN")} đ
+                          </p>
+                        </div>
+                      </label>
+                      {selected && (
+                        <div className="mt-3 flex items-center gap-2">
+                          <button
+                            type="button"
+                            className="w-9 h-9 rounded-full border text-lg"
+                            onClick={() =>
+                              handleDishQuantity(
+                                dish._id,
+                                (selected.quantity || 1) - 1
+                              )
+                            }
+                          >
+                            −
+                          </button>
+                          <input
+                            type="number"
+                            min={1}
+                            value={selected.quantity}
+                            onChange={(e) =>
+                              handleDishQuantity(dish._id, e.target.value)
+                            }
+                            className="w-16 h-9 border rounded-lg text-center"
+                          />
+                          <button
+                            type="button"
+                            className="w-9 h-9 rounded-full border text-lg"
+                            onClick={() =>
+                              handleDishQuantity(
+                                dish._id,
+                                (selected.quantity || 1) + 1
+                              )
+                            }
+                          >
+                            +
+                          </button>
+                        </div>
+                      )}
+                    </div>
+                  );
+                })}
+              </div>
+              {selectedDishes.length > 0 && (
+                <div className="flex items-center justify-between text-sm font-semibold text-slate-700">
+                  <span>Tổng giá trị món đã chọn</span>
+                  <span>{selectedDishTotal.toLocaleString("vi-VN")} đ</span>
+                </div>
+              )}
+            </div>
+
+            <div className="p-5 border-dashed border-2 rounded-2xl text-center space-y-2">
+              <p className="font-DM_sans font-bold text-base">
+                Tiền cọc cần thanh toán
+              </p>
+              <p className="text-3xl font-PlayfairD text-blue-600">
+                {depositAmount > 0
+                  ? depositAmount.toLocaleString("vi-VN") + " đ"
+                  : "--"}
+              </p>
+              <p className="text-sm text-slate-500">
+                Bàn đến 6 người cọc 500.000đ, từ 7 người trở lên cọc 1.000.000đ.
               </p>
             </div>
 

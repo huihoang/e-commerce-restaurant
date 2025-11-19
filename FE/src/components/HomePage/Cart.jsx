@@ -12,6 +12,8 @@ const Cart = () => {
     address: "",
     note: "",
   });
+  const [fulfillment, setFulfillment] = useState("delivery");
+  const [paymentMethod, setPaymentMethod] = useState("bank");
   const [related, setRelated] = useState([]);
   const sliderRef = useRef(null);
   const API_BASE_URL =
@@ -65,6 +67,21 @@ const Cart = () => {
       ),
     [items]
   );
+  const shippingEligible = fulfillment === "delivery" && items.length > 0;
+  const shippingFee = useMemo(() => {
+    if (!shippingEligible) return 0;
+    if (totalPrice >= 300000) return 0;
+    return 30000;
+  }, [shippingEligible, totalPrice]);
+  const discountRate = paymentMethod === "bank" ? 0.05 : 0;
+  const discountAmount = useMemo(
+    () => totalPrice * discountRate,
+    [totalPrice, discountRate]
+  );
+  const payableSubtotal = Math.max(totalPrice - discountAmount, 0);
+  const finalTotal = payableSubtotal + shippingFee;
+  const depositRequired =
+    paymentMethod === "cash" && totalPrice >= 500000 ? totalPrice * 0.3 : 0;
 
   const handleQty = (id, qty) => {
     const next = updateQuantity(id, qty);
@@ -250,6 +267,126 @@ const Cart = () => {
                     setCustomer((p) => ({ ...p, note: e.target.value }))
                   }
                 />
+
+                <div className="p-4 border rounded-xl bg-slate-50">
+                  <p className="font-DM_sans font-semibold mb-2">
+                    Hình thức nhận món
+                  </p>
+                  <div className="flex flex-wrap gap-2">
+                    {[
+                      { id: "delivery", label: "Giao hàng tận nơi" },
+                      { id: "pickup", label: "Nhận tại quán" },
+                    ].map((option) => (
+                      <button
+                        key={option.id}
+                        type="button"
+                        onClick={() => setFulfillment(option.id)}
+                        className={`px-4 py-2 rounded-full border transition ${
+                          fulfillment === option.id
+                            ? "bg-blue-600 text-white border-blue-600"
+                            : "bg-white text-slate-700 border-slate-200 hover:border-blue-300"
+                        }`}
+                      >
+                        {option.label}
+                      </button>
+                    ))}
+                  </div>
+                  {fulfillment === "delivery" ? (
+                    <p className="mt-3 text-sm text-slate-600">
+                      Đơn trên 300.000đ được freeship. Đơn dưới mức này sẽ cộng thêm 30.000đ phí giao hàng.
+                    </p>
+                  ) : (
+                    <p className="mt-3 text-sm text-slate-600">
+                      Nhận tại quán không phát sinh phí giao hàng.
+                    </p>
+                  )}
+                </div>
+
+                <div className="p-4 border rounded-xl bg-white shadow-sm">
+                  <p className="font-DM_sans font-semibold mb-3">
+                    Phương thức thanh toán
+                  </p>
+                  <div className="flex flex-col gap-3">
+                    <label
+                      className={`flex items-start gap-3 border rounded-xl p-3 cursor-pointer transition ${
+                        paymentMethod === "bank"
+                          ? "border-blue-500 bg-blue-50"
+                          : "border-slate-200 bg-white"
+                      }`}
+                    >
+                      <input
+                        type="radio"
+                        name="payment"
+                        value="bank"
+                        checked={paymentMethod === "bank"}
+                        onChange={() => setPaymentMethod("bank")}
+                      />
+                      <div>
+                        <p className="font-semibold">Chuyển khoản ngay</p>
+                        <p className="text-sm text-slate-600">
+                          Giảm 5% trên tổng giá trị đơn hàng khi thanh toán
+                          trước.
+                        </p>
+                      </div>
+                    </label>
+
+                    <label
+                      className={`flex items-start gap-3 border rounded-xl p-3 cursor-pointer transition ${
+                        paymentMethod === "cash"
+                          ? "border-blue-500 bg-blue-50"
+                          : "border-slate-200 bg-white"
+                      }`}
+                    >
+                      <input
+                        type="radio"
+                        name="payment"
+                        value="cash"
+                        checked={paymentMethod === "cash"}
+                        onChange={() => setPaymentMethod("cash")}
+                      />
+                      <div>
+                        <p className="font-semibold">Tiền mặt khi nhận</p>
+                        <p className="text-sm text-slate-600">
+                          Không áp dụng giảm giá. Đơn từ 500.000đ cần đặt cọc
+                          trước 30%.
+                        </p>
+                      </div>
+                    </label>
+                  </div>
+                </div>
+
+                <div className="p-5 border rounded-2xl bg-slate-900 text-white space-y-2">
+                  <div className="flex justify-between text-sm text-slate-200">
+                    <span>Tạm tính</span>
+                    <span>{totalPrice.toLocaleString("vi-VN")} đ</span>
+                  </div>
+                  {discountAmount > 0 && (
+                    <div className="flex justify-between text-sm text-emerald-300">
+                      <span>Giảm 5% (chuyển khoản)</span>
+                      <span>-{discountAmount.toLocaleString("vi-VN")} đ</span>
+                    </div>
+                  )}
+                  {shippingEligible && (
+                    <div className="flex justify-between text-sm">
+                      <span>Phí giao hàng</span>
+                      <span>
+                        {shippingFee === 0
+                          ? "Miễn phí"
+                          : `+${shippingFee.toLocaleString("vi-VN")} đ`}
+                      </span>
+                    </div>
+                  )}
+                  <div className="border-t border-white/30 pt-2 flex justify-between text-base font-semibold">
+                    <span>Tổng thanh toán</span>
+                    <span>{finalTotal.toLocaleString("vi-VN")} đ</span>
+                  </div>
+                  {depositRequired > 0 && (
+                    <div className="text-xs text-amber-200">
+                      Cần đặt cọc trước:{" "}
+                      {depositRequired.toLocaleString("vi-VN")} đ (30% tổng đơn)
+                    </div>
+                  )}
+                </div>
 
                 <button
                   className="w-full py-3 rounded-full bg-gradient-to-r from-blue-600 to-indigo-600 text-white font-bold hover:from-blue-700 hover:to-indigo-700 shadow-lg hover:shadow-xl transition-all duration-300 disabled:opacity-50"
