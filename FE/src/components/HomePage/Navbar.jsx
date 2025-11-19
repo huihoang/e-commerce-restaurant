@@ -39,7 +39,7 @@ const Navbar = () => {
 
                         {/* ---------- Logo Part ---------- */}
                         <Link to="/" className='flex gap-3 items-center ' onClick={closeMenu}>
-                            <img src="/Logo.png" alt="Logo_image" />
+                            <img src="/Logo.png" width={55} height={55} alt="Logo_image" />
                             <h1 className='font-PlayfairD font-semibold text-2xl sm:text-3xl lg:text-[42px] italic text-slate-800 '>BK Restaurant</h1>
                         </Link>
 
