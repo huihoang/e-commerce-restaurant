@@ -97,19 +97,19 @@ const Book = () => {
     let hasError = false;
 
     if (date === "") {
-      setDateError("Please Select A Date");
+      setDateError("Vui lòng chọn ngày");
       hasError = true;
     }
     if (time === "") {
-      setTimeError("Please Select A Time");
+      setTimeError("Vui lòng chọn giờ");
       hasError = true;
     }
     if (name === "") {
-      setNameError("Please Enter Your Name");
+      setNameError("Vui lòng nhập họ tên");
       hasError = true;
     }
     if (phone === "") {
-      setPhoneError("Must Include Phone Number");
+      setPhoneError("Vui lòng nhập số điện thoại");
       hasError = true;
     }
     if (!person || Number(person) < 1) {
