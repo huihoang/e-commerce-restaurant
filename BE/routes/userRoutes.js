@@ -1,5 +1,4 @@
 const express = require('express')
-const User = require('../models/User')
 const router = express.Router()
 const authenticateToken = require('../middleware/authMiddleware')
 const userController = require('../controllers/userController')
@@ -18,7 +17,5 @@ router.put('/:id', userController.updateUser)
 
 // Delete user
 router.delete('/:id', userController.deleteUser)
-
-
 
 module.exports = router

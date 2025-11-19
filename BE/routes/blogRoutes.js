@@ -1,7 +1,6 @@
 // routes/BlogRoutes.js
 const express = require("express");
 const router = express.Router();
-const BlogPost = require("../models/BlogPost");
 const blogController = require('../controllers/blogController');
 
 // ==============================

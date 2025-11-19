@@ -8,6 +8,7 @@ const bookingsRoutes = require("./bookingsRoutes");
 const blogRoutes = require("./blogRoutes");
 const adminbookingsRoutes = require("./adminBookingRoutes");
 const contactRoutes = require("./contactRoutes");
+const orderRoutes = require("./orderRoutes");
 
 router.use("/api", authRoutes);
 router.use("/api/users", userRoutes);
@@ -16,5 +17,6 @@ router.use("/api/bookings", bookingsRoutes);
 router.use("/api/blogs", blogRoutes);
 router.use("/api/admin/bookings", adminbookingsRoutes);
 router.use("/api/contact", contactRoutes);
+router.use("/api/order", orderRoutes);
 
 module.exports = router;
