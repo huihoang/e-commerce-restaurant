@@ -35,73 +35,77 @@ const HomeBlogs = () => {
   };
 
   return (
-    <section className="container pt-[120px] py-5">
+    <section className="px-6 sm:px-8 lg:px-12 pt-16 pb-16 bg-white">
       {/* ================= Header ================= */}
-      <ul className="flex justify-between items-center">
-        <h4 className="font-PlayfairD font-medium text-[55px] leading-[60px]">
+      <div className="flex justify-between items-center">
+        <h4 className="font-PlayfairD font-medium text-3xl sm:text-4xl lg:text-[55px] leading-[1.3]">
           Các bài viết
         </h4>
 
         <Link to="/blog">
-          <button className="w-[190px] h-[65px] bg-[#AD343E] text-white rounded-full hover:bg-red-600 transition duration-200">
+          <button className="p-3 bg-gradient-to-r from-blue-600 to-indigo-600 text-white rounded-full hover:from-blue-700 hover:to-indigo-700 shadow-lg hover:shadow-xl transition-all duration-300 font-semibold">
             Đọc tất cả
           </button>
         </Link>
-      </ul>
+      </div>
 
       {/* ================= Blog List ================= */}
-      <ul className="mt-[130px] flex justify-between flex-wrap gap-8">
-        {/* -------- First blog item -------- */}
+      <div className="mt-12 flex flex-col lg:grid lg:grid-cols-2 gap-8">
+        {/* -------- Left side: First blog item (50%) -------- */}
         {blogs.length > 0 && (
           <Link
             to={`/blog/${blogs[0]._id}`}
             key={blogs[0]._id}
-            className="w-[836px] rounded-xl border-2 hover:scale-105 transition duration-200 will-change-transform"
+            className="rounded-xl border-2 border-slate-200 hover:border-blue-300 hover:shadow-xl transition-all duration-300 bg-white overflow-hidden"
           >
-            <img
-              src={blogs[0].image}
-              alt={blogs[0].title}
-              className="w-full h-[450px] object-cover rounded-t-xl"
-            />
-            <ul className="py-12 px-8 flex flex-col gap-[15px]">
-              <li className="font-DM_sans font-medium text-base text-[#737865]">
+            <div className="w-full h-[450px] overflow-hidden rounded-t-xl">
+              <img
+                src={blogs[0].image}
+                alt={blogs[0].title}
+                className="w-full h-full object-cover hover:scale-110 transition-transform duration-500"
+              />
+            </div>
+            <div className="py-12 px-8 flex flex-col gap-[15px]">
+              <p className="font-DM_sans font-medium text-base text-[#737865]">
                 {formatDate(blogs[0].createdAt)}
-              </li>
-              <li className="font-DM_sans font-medium text-xl">
+              </p>
+              <h5 className="font-DM_sans font-medium text-xl">
                 {blogs[0].title}
-              </li>
-              <li className="font-DM_sans font-normal text-base">
+              </h5>
+              <p className="font-DM_sans font-normal text-base">
                 {truncateContent(blogs[0].content)}
-              </li>
-            </ul>
+              </p>
+            </div>
           </Link>
         )}
 
-        {/* -------- Other blog items -------- */}
-        <div className="w-[640px] flex flex-wrap gap-6">
+        {/* -------- Right side: 4 blog items (50%) -------- */}
+        <div className="flex flex-col lg:grid lg:grid-cols-2 gap-6">
           {blogs.slice(1, 5).map((item) => (
             <Link
               to={`/blog/${item._id}`}
               key={item._id}
-              className="w-[306px] rounded-xl border-2 hover:scale-105 duration-300 will-change-transform"
+              className="rounded-xl border-2 border-slate-200 hover:border-blue-300 hover:shadow-xl transition-all duration-300 bg-white overflow-hidden"
             >
-              <img
-                src={item.image}
-                alt={item.title}
-                className="h-[200px] w-full object-cover rounded-t-xl"
-              />
-              <ul className="p-[25px]">
-                <li className="font-DM_sans font-medium text-sm text-[#737865]">
+              <div className="h-[200px] w-full overflow-hidden rounded-t-xl">
+                <img
+                  src={item.image}
+                  alt={item.title}
+                  className="h-full w-full object-cover hover:scale-110 transition-transform duration-500"
+                />
+              </div>
+              <div className="p-[25px]">
+                <p className="font-DM_sans font-medium text-sm text-[#737865]">
                   {formatDate(item.createdAt)}
-                </li>
-                <li className="mt-3 font-DM_sans font-medium text-xl">
+                </p>
+                <h5 className="mt-3 font-DM_sans font-medium text-xl">
                   {item.title}
-                </li>
-              </ul>
+                </h5>
+              </div>
             </Link>
           ))}
         </div>
-      </ul>
+      </div>
     </section>
   );
 };

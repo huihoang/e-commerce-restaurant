@@ -91,17 +91,17 @@ const Contact = () => {
           data.message || "Bạn vui lòng điền đầy đủ thông tin chính xác"
         );
       }
-    } catch (error) {
+    } catch {
       setErrorMessage("An error occurred. Please try again later.");
     }
   };
 
   return (
-    <>
+    <div className="bg-white max-w-7xl mx-auto shadow-sm">
       {/* ============== Contact Part Start ============== */}
-      <section>
-        <header className="container text-center mt-4">
-          <h1 className="font-PlayfairD text-[100px] font-normal leading-[96px]">
+      <section className="pb-16">
+        <header className="px-6 sm:px-8 lg:px-12 text-center pt-4">
+          <h1 className="font-PlayfairD text-4xl sm:text-6xl lg:text-[100px] font-normal leading-[1.2]">
             Liên hệ
           </h1>
           <p className="font-DM_sans text-lg leading-[28px] font-normal mt-6">
@@ -112,43 +112,43 @@ const Contact = () => {
         {/* ============== Form Part ============== */}
         <form
           onSubmit={handleSubmit}
-          className="w-[800px] container p-10 mt-[72px] shadow-2xl rounded-2xl"
+          className="w-full max-w-[800px] mx-auto px-6 sm:px-8 lg:px-12 p-10 mt-12 shadow-2xl rounded-2xl"
         >
-          <ul className="flex gap-6 flex-col">
-            <ul className="flex gap-2">
+          <div className="flex gap-6 flex-col">
+            <div className="flex flex-col md:flex-row gap-2">
               {/* for name */}
-              <li className="relative">
+              <div className="relative w-full md:w-[48%]">
                 <p className="ml-4 font-DM_sans font-bold text-base">Tên</p>
                 <input
                   onChange={handleName}
                   value={name}
                   type="text"
                   placeholder="Điền tên của bạn"
-                  className="w-[350px] h-[60px] rounded-full border-2 pl-4 mt-2 outline-none"
+                  className="w-full h-[60px] rounded-full border-2 pl-4 mt-2 outline-none"
                 />
                 <p className="font-DM_sans font-medium text-sm text-red-400 absolute top-0 right-5">
                   {nameError}
                 </p>
-              </li>
+              </div>
 
               {/* for email */}
-              <li className="relative">
+              <div className="relative w-full md:w-[48%]">
                 <p className="ml-4 font-DM_sans font-bold text-base">Email</p>
                 <input
                   onChange={handleEmail}
                   value={email}
                   type="text"
                   placeholder="Điền email của bạn"
-                  className="w-[350px] h-[60px] rounded-full border-2 pl-4 mt-2 outline-none"
+                  className="w-full h-[60px] rounded-full border-2 pl-4 mt-2 outline-none"
                 />
                 <p className="font-DM_sans font-medium text-sm text-red-400 absolute top-0 right-5">
                   {emailError}
                 </p>
-              </li>
-            </ul>
+              </div>
+            </div>
 
             {/* for subject */}
-            <ul>
+            <div>
               <p className="ml-4 font-DM_sans font-bold text-base">Tiêu đề</p>
               <input
                 onChange={handleSubject}
@@ -157,10 +157,10 @@ const Contact = () => {
                 placeholder="Viết tiêu đề"
                 className="w-full h-[60px] rounded-full border-2 pl-4 mt-2 outline-none"
               />
-            </ul>
+            </div>
 
             {/* for message */}
-            <ul className="flex flex-col gap-2 relative">
+            <div className="flex flex-col gap-2 relative">
               <p className="ml-4 font-DM_sans font-bold text-base">Nội dung</p>
               <textarea
                 onChange={handleMassage}
@@ -171,14 +171,14 @@ const Contact = () => {
               <p className="font-DM_sans font-medium text-sm text-red-400 absolute top-0 right-5">
                 {massageError}
               </p>
-            </ul>
+            </div>
 
             {/* Submit button */}
-            <ul>
-              <button className="w-full py-5 bg-[#AD343E] text-white rounded-full font-DM_sans font-bold text-base hover:bg-red-500 active:scale-95 duration-200">
+            <div>
+              <button className="w-full py-5 bg-gradient-to-r from-blue-600 to-indigo-600 text-white rounded-full font-DM_sans font-bold text-base hover:from-blue-700 hover:to-indigo-700 shadow-lg hover:shadow-xl transition-all duration-300">
                 Gửi
               </button>
-            </ul>
+            </div>
 
             {/* Success/Error message */}
             {successMessage && (
@@ -191,52 +191,10 @@ const Contact = () => {
                 {errorMessage}
               </p>
             )}
-          </ul>
+          </div>
         </form>
-
-        {/* ============== Contact Info Part ============== */}
-        <div className="container w-[780px] flex justify-between mt-[82px]">
-          {/* number */}
-          <ul className="flex flex-col gap-6">
-            <li className="text-[#2C2F24] font-bold font-DM_sans text-xl">
-              Gọi chúng tôi:
-            </li>
-            <a
-              href="tel:(084)0244556624"
-              className="text-[#AD343E] font-bold font-DM_sans text-2xl hover:text-red-400 duration-200"
-            >
-              (084)0244556624
-            </a>
-          </ul>
-
-          {/* hour time */}
-          <ul className="flex flex-col gap-6">
-            <li className="text-[#2C2F24] font-bold font-DM_sans text-xl">
-              Giờ hoạt động:
-            </li>
-            <li className="text-[#2C2F24] font-normal font-DM_sans text-lg">
-              T2-T7: 11am - 8pm,
-              <br />
-              CN: 9am - 10pm
-            </li>
-          </ul>
-
-          {/* location */}
-          <ul className="flex flex-col gap-6">
-            <li className="text-[#2C2F24] font-bold font-DM_sans text-xl">
-              Địa chỉ:
-            </li>
-            <li className="text-[#2C2F24] font-normal font-DM_sans text-lg">
-              268 Đ. Lý Thường Kiệt
-              <br />
-              Phường 14, Quận 10
-              <br />
-              Hồ Chí Minh
-            </li>
-          </ul>
-        </div>
       </section>
-    </>
+    </div>
   );
 };
 

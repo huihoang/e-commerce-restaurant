@@ -1,5 +1,5 @@
 // ==================== All Import
-import React, { useState } from "react";
+import { useState } from "react";
 
 const Auth = ({ setIsLoggedIn, setRole }) => {
   // ==================== All Hooks
@@ -58,13 +58,13 @@ const Auth = ({ setIsLoggedIn, setRole }) => {
   };
 
   return (
-    <>
-      <section className="flex justify-center items-start pt-20 min-h-screen bg-white">
+    <div className="bg-white max-w-7xl mx-auto shadow-sm">
+      <section className="flex justify-center items-start pt-20 pb-16 min-h-[calc(100vh-200px)]">
         <div className="w-[400px] bg-white p-8 rounded-2xl shadow-[0_8px_30px_rgba(0,0,0,0.3)]">
           {/* ============== Login Form ============== */}
           {form === "login" && (
             <form onSubmit={handleLogin} className="flex flex-col gap-6">
-              <h2 className="text-3xl font-bold text-center text-[#AD343E]">
+              <h2 className="text-3xl font-bold text-center bg-gradient-to-r from-blue-600 to-indigo-600 bg-clip-text text-transparent">
                 Đăng nhập
               </h2>
               <input
@@ -85,7 +85,7 @@ const Auth = ({ setIsLoggedIn, setRole }) => {
               />
               <button
                 type="submit"
-                className="bg-[#AD343E] text-white py-3 rounded-full font-bold hover:bg-red-500 active:scale-95 duration-200"
+                className="bg-gradient-to-r from-blue-600 to-indigo-600 text-white py-3 rounded-full font-bold hover:from-blue-700 hover:to-indigo-700 shadow-lg hover:shadow-xl transition-all duration-300"
               >
                 Đăng nhập
               </button>
@@ -93,7 +93,7 @@ const Auth = ({ setIsLoggedIn, setRole }) => {
                 Chưa có tài khoản?{" "}
                 <span
                   onClick={() => setForm("signup")}
-                  className="text-[#AD343E] cursor-pointer hover:underline"
+                  className="text-blue-600 cursor-pointer hover:text-blue-700 font-semibold transition-colors duration-300"
                 >
                   Đăng ký
                 </span>
@@ -104,7 +104,7 @@ const Auth = ({ setIsLoggedIn, setRole }) => {
           {/* ============== Signup Form ============== */}
           {form === "signup" && (
             <form onSubmit={handleSignup} className="flex flex-col gap-6">
-              <h2 className="text-3xl font-bold text-center text-[#AD343E]">
+              <h2 className="text-3xl font-bold text-center bg-gradient-to-r from-blue-600 to-indigo-600 bg-clip-text text-transparent">
                 Tạo tài khoản
               </h2>
               <input
@@ -133,7 +133,7 @@ const Auth = ({ setIsLoggedIn, setRole }) => {
               />
               <button
                 type="submit"
-                className="bg-[#AD343E] text-white py-3 rounded-full font-bold hover:bg-red-500 active:scale-95 duration-200"
+                className="bg-gradient-to-r from-blue-600 to-indigo-600 text-white py-3 rounded-full font-bold hover:from-blue-700 hover:to-indigo-700 shadow-lg hover:shadow-xl transition-all duration-300"
               >
                 Đăng ký
               </button>
@@ -141,7 +141,7 @@ const Auth = ({ setIsLoggedIn, setRole }) => {
                 Đã có tài khoản?{" "}
                 <span
                   onClick={() => setForm("login")}
-                  className="text-[#AD343E] cursor-pointer hover:underline"
+                  className="text-blue-600 cursor-pointer hover:text-blue-700 font-semibold transition-colors duration-300"
                 >
                   Đăng nhập
                 </span>
@@ -157,7 +157,7 @@ const Auth = ({ setIsLoggedIn, setRole }) => {
               </h2>
               <button
                 onClick={handleLogout}
-                className="bg-gray-800 text-white px-6 py-2 rounded-full hover:bg-gray-600 active:scale-95 duration-200"
+                className="bg-gradient-to-r from-slate-700 to-slate-800 text-white px-6 py-2 rounded-full hover:from-slate-800 hover:to-slate-900 shadow-lg hover:shadow-xl transition-all duration-300"
               >
                 Đăng xuất
               </button>
@@ -165,7 +165,7 @@ const Auth = ({ setIsLoggedIn, setRole }) => {
           )}
         </div>
       </section>
-    </>
+    </div>
   );
 };
 

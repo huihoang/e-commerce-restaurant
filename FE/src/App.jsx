@@ -16,6 +16,7 @@ import About from "./components/HomePage/About";
 import AdminDashboard from "./components/Admin/AdminDashboard";
 import UserDashboard from "./components/User/UserDashboard";
 import BlogDetails from "./components/HomePage/BlogDetails"; // trang chi tiết
+import Cart from "./components/HomePage/Cart";
 import LayoutOne from "./layouts/LayoutOne";
 
 // ==================== All Routes
@@ -34,6 +35,7 @@ const getRouter = (setIsLoggedIn, setRole) =>
         <Route path="/book" element={<Book />} />
         <Route path="/blog" element={<Blog />} />
         <Route path="/blog/:id" element={<BlogDetails />} />
+        <Route path="/cart" element={<Cart />} />
       </Route>
     )
   );

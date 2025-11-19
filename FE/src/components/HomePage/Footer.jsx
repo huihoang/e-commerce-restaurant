@@ -7,56 +7,74 @@ const Footer = () => {
     return (
         <>
             {/* ================= Footer Part ================= */}
-            <footer className='w-full bg-[#474747] py-[2%] mt-20'>
-                <ul className='flex justify-evenly'>
-                    <ul className='flex flex-col gap-[30px] text-white'>
+            <footer className='w-full bg-gradient-to-br from-slate-800 to-slate-900 py-12'>
+                <div className='max-w-7xl mx-auto px-6 sm:px-8 lg:px-12'>
+                    <div className='grid grid-cols-1 md:grid-cols-3 gap-8 lg:gap-12'>
+                        {/* ================= Footer Info & Logo Part ================= */}
+                        <div className='flex flex-col gap-6 text-white'>
+                            {/* ------- Footer Logo ------- */}
+                            <Link to='/' className='flex items-center'>
+                                <img src="/footerLogo.png" alt="footer_logo_Image" />
+                                <h3 className='ml-3 font-PlayfairD font-semibold text-[33px] italic leading-normal'>BK Restaurant</h3>
+                            </Link>
 
-                        {/* ------- Footer Logo ------- */}
-                        <Link to='/' className='flex items-center '>
-                            <img src="/footerLogo.png" alt="footer_logo_Image" />
-                            <h3 className='ml-3 font-PlayfairD font-semibold text-[33px] italic leading-[30px]'>BK Restaurant</h3>
-                        </Link>
+                            {/* ------- Footer Info ------- */}
+                            <p className='text-slate-300'>
+                                &quot;Tinh hoa ẩm thực vào trong từng món ăn&quot;
+                            </p>
+                            <div className='flex items-center gap-3'>
+                                <FaPhone className='text-blue-400' />
+                                <span>+84 123 456 789</span>
+                            </div>
+                            <div className='flex items-center gap-3'>
+                                <IoIosMail className='text-blue-400' />
+                                <span>bachkhoa@hcmut.edu.vn</span>
+                            </div>
 
-                        {/* ------- Footer Info ------- */}
-                        <li>
-                            "Tinh hoa ẩm thực vào trong từng món ăn"
-                        </li>
-                        <li className='flex items-center gap-3'><FaPhone className='text-[#AD343E]' /> <span>+84 123 456 789</span></li>
-                        <li className='flex items-center gap-3'><IoIosMail className='text-[#AD343E]' /> <span>bachkhoa@hcmut.edu.vn</span></li>
+                            {/* ------- All Social Links ------- */}
+                            <div className='flex gap-3'>
+                                <a href="#" className='text-[20px] p-[10px] bg-gradient-to-br from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 rounded-full shadow-lg hover:shadow-xl transition-all duration-300'><FaTwitter /></a>
+                                <a href="#" className='text-[20px] p-[10px] bg-gradient-to-br from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 rounded-full shadow-lg hover:shadow-xl transition-all duration-300'><FaFacebookF /></a>
+                                <a href="#" className='text-[20px] p-[10px] bg-gradient-to-br from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 rounded-full shadow-lg hover:shadow-xl transition-all duration-300'><FaInstagram /></a>
+                            </div>
+                        </div>
 
-                        {/* ------- All Social Links ------- */}
-                        <li className='flex gap-3'>
-                            <a href="#" className='text-[20px] p-[10px] bg-[#AD343E] hover:bg-red-600 rounded-full'><FaTwitter /></a>
-                            <a href="#" className='text-[20px] p-[10px] bg-[#AD343E] hover:bg-red-600 rounded-full'><FaFacebookF /></a>
-                            <a href="#" className='text-[20px] p-[10px] bg-[#AD343E] hover:bg-red-600 rounded-full'><FaInstagram /></a>
-                        </li>
-                    </ul>
+                        {/* ================= All Utility Pages Link Part ================= */}
+                        <div className='text-white'>
+                            <h2 className='font-DM_sans font-bold text-base mb-6'>Thông tin thêm</h2>
+                            <div className='flex flex-col gap-4 font-DM_sans font-normal text-base'>
+                                <Link to="#" className='hover:text-blue-300 transition-colors duration-300'>Chi Nhánh</Link>
+                                <Link to="#" className='hover:text-blue-300 transition-colors duration-300'>Đại Lý</Link>
+                                <Link to="#" className='hover:text-blue-300 transition-colors duration-300'>Chính sách bảo mật</Link>
+                                <Link to="#" className='hover:text-blue-300 transition-colors duration-300'>Điều khoản dịch vụ</Link>
+                            </div>
+                        </div>
 
-                    {/* ================= All Utility Pages Link Part ================= */}
-                    <ul className='text-white'>
-                        <h2 className='font-DM_sans font-bold text-base'>Thông tin thêm</h2>
-                        <li className='flex flex-col gap-5 font-DM_sans font-normal text-base mt-10'>
-                            <Link to="#" className='hover:text-red-400'>Chi Nhánh</Link>
-                            <Link to="#" className='hover:text-red-400'>Đại Lý</Link>
-                            <Link to="#" className='hover:text-red-400'>Chính sách bảo mật</Link>
-                            <Link to="#" className='hover:text-red-400'>Điều khoản dịch vụ</Link>
-                        </li>
-                    </ul>
-
-                    {/* ================= Footer Images Part ================= */}
-                    <ul>
-                        <a href='#' className='text-white font-DM_sans font-bold text-base hover:text-red-300 duration-200'>Theo dõi chúng tôi trên Instagram</a>
-                        <li className='w-[410px] mt-10 flex flex-wrap gap-3'>
-                            <img src="/footerImg1.png" alt="footer_img1" className='hover:scale-105 duration-300' />
-                            <img src="/footerImg2.png" alt="footer_img2" className='hover:scale-105 duration-300' />
-                            <img src="/footerImg3.png" alt="footer_img3" className='hover:scale-105 duration-300' />
-                            <img src="/footerImg4.png" alt="footer_img4" className='hover:scale-105 duration-300' />
-                        </li>
-                    </ul>
-                </ul>
+                        {/* ================= Footer Images Part ================= */}
+                        <div className='flex flex-col'>
+                            <a href='#' className='text-white font-DM_sans font-bold text-base hover:text-blue-300 transition-colors duration-300 mb-6'>Theo dõi chúng tôi trên Instagram</a>
+                            <div className='grid grid-cols-2 gap-3'>
+                                <div className='overflow-hidden rounded-lg shadow-md hover:shadow-xl transition-all duration-300'>
+                                    <img src="/footerImg1.png" alt="footer_img1" className='w-full h-full object-cover hover:scale-110 transition-transform duration-500' />
+                                </div>
+                                <div className='overflow-hidden rounded-lg shadow-md hover:shadow-xl transition-all duration-300'>
+                                    <img src="/footerImg2.png" alt="footer_img2" className='w-full h-full object-cover hover:scale-110 transition-transform duration-500' />
+                                </div>
+                                <div className='overflow-hidden rounded-lg shadow-md hover:shadow-xl transition-all duration-300'>
+                                    <img src="/footerImg3.png" alt="footer_img3" className='w-full h-full object-cover hover:scale-110 transition-transform duration-500' />
+                                </div>
+                                <div className='overflow-hidden rounded-lg shadow-md hover:shadow-xl transition-all duration-300'>
+                                    <img src="/footerImg4.png" alt="footer_img4" className='w-full h-full object-cover hover:scale-110 transition-transform duration-500' />
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
 
                 {/* ================= Copy-Right Part ================= */}
-                <p className='mt-[130px] text-[#ADB29E] text-base font-DM_sans font-normal text-center'>Copyright © 2025 Hcmut. All Rights Reserved</p>
+                <div className='max-w-7xl mx-auto px-6 sm:px-8 lg:px-12 mt-12 pt-8 border-t border-slate-700'>
+                    <p className='text-slate-400 text-base font-DM_sans font-normal text-center'>Copyright © 2025 Hcmut. All Rights Reserved</p>
+                </div>
             </footer>
         </>
     );

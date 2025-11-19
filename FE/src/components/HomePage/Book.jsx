@@ -1,5 +1,5 @@
 // ==================== All Import
-import React, { useState } from "react";
+import { useState } from "react";
 
 const Book = () => {
   // ==================== All Hooks
@@ -102,12 +102,12 @@ const Book = () => {
   };
 
   return (
-    <>
+    <div className="bg-white max-w-7xl mx-auto shadow-sm">
       {/* ================= Booking part ================= */}
-      <section>
+      <section className="pb-16">
         {/* ============== Info Part ============== */}
-        <header className="container text-center mt-4">
-          <h1 className="font-PlayfairD text-[100px] font-normal leading-[96px]">
+        <header className="px-6 sm:px-8 lg:px-12 text-center mt-4">
+          <h1 className="font-PlayfairD text-4xl sm:text-6xl lg:text-[100px] font-normal leading-[1.2]">
             Đặt bàn
           </h1>
           <p className="font-DM_sans text-lg leading-[28px] font-normal mt-6">
@@ -118,71 +118,71 @@ const Book = () => {
         {/* ============== Form Part ============== */}
         <form
           onSubmit={handleSubmit}
-          className="w-[800px] container p-10 mt-[72px] shadow-2xl rounded-2xl"
+          className="w-full max-w-[800px] mx-auto px-6 sm:px-8 lg:px-12 p-10 mt-12 shadow-2xl rounded-2xl"
         >
-          <ul className="flex gap-6 flex-col">
-            <ul className="flex gap-2">
+          <div className="flex gap-6 flex-col">
+            <div className="flex flex-col md:flex-row gap-2">
               {/* for date */}
-              <li className="relative">
+              <div className="relative w-full md:w-[48%]">
                 <p className="ml-4 font-DM_sans font-bold text-base">Ngày</p>
                 <input
                   onChange={handleDate}
                   type="date"
-                  className="w-[350px] h-[60px] rounded-full border-2 px-4 mt-2 outline-none"
+                  className="w-full h-[60px] rounded-full border-2 px-4 mt-2 outline-none"
                 />
                 <p className="font-DM_sans font-medium text-sm text-red-400 absolute top-0 right-5">
                   {dateError}
                 </p>
-              </li>
+              </div>
 
               {/* for time */}
-              <li className="relative">
+              <div className="relative w-full md:w-[48%]">
                 <p className="ml-4 font-DM_sans font-bold text-base">
                   Thời gian
                 </p>
                 <input
                   onChange={handleTime}
                   type="time"
-                  className="w-[350px] h-[60px] rounded-full border-2 px-4 mt-2 outline-none"
+                  className="w-full h-[60px] rounded-full border-2 px-4 mt-2 outline-none"
                 />
                 <p className="font-DM_sans font-medium text-sm text-red-400 absolute top-0 right-5">
                   {timeError}
                 </p>
-              </li>
-            </ul>
+              </div>
+            </div>
 
-            <ul className="flex gap-2">
+            <div className="flex flex-col md:flex-row gap-2">
               {/* for name */}
-              <li className="relative">
+              <div className="relative w-full md:w-[48%]">
                 <p className="ml-4 font-DM_sans font-bold text-base">Tên</p>
                 <input
                   onChange={handleName}
                   type="text"
-                  className="w-[350px] h-[60px] rounded-full border-2 px-4 mt-2 outline-none"
+                  className="w-full h-[60px] rounded-full border-2 px-4 mt-2 outline-none"
                 />
                 <p className="font-DM_sans font-medium text-sm text-red-400 absolute top-0 right-5">
                   {nameError}
                 </p>
-              </li>
+              </div>
 
               {/* for phone */}
-              <li className="relative">
+              <div className="relative w-full md:w-[48%]">
                 <p className="ml-4 font-DM_sans font-bold text-base">
                   Số điện thoại
                 </p>
                 <input
                   onChange={handlePhone}
                   type="number"
-                  className="w-[350px] h-[60px] rounded-full border-2 px-4 mt-2 outline-none"
+                  className="w-full h-[60px] rounded-full border-2 px-4 mt-2 outline-none"
                 />
                 <p className="font-DM_sans font-medium text-sm text-red-400 absolute top-0 right-5">
                   {phoneError}
                 </p>
-              </li>
-            </ul>
+              </div>
+            </div>
 
             {/* for persons */}
-            <ul className="relative">
+            <div className="relative">
               <p className="ml-4 font-DM_sans font-bold text-base">
                 Số lượng người
               </p>
@@ -195,21 +195,21 @@ const Book = () => {
               <p className="font-DM_sans font-medium text-sm text-red-400 absolute top-0 right-5">
                 {personError}
               </p>
-            </ul>
+            </div>
 
             {/* for send button */}
-            <ul>
+            <div>
               <button
-                className="w-full py-5 bg-[#AD343E] text-white rounded-full font-DM_sans font-bold text-base hover:bg-red-500 active:scale-95 duration-200"
+                className="w-full py-5 bg-gradient-to-r from-blue-600 to-indigo-600 text-white rounded-full font-DM_sans font-bold text-base hover:from-blue-700 hover:to-indigo-700 shadow-lg hover:shadow-xl transition-all duration-300 disabled:opacity-50 disabled:cursor-not-allowed"
                 disabled={loading}
               >
                 {loading ? "Đang gửi..." : "Gửi"}
               </button>
-            </ul>
-          </ul>
+            </div>
+          </div>
         </form>
       </section>
-    </>
+    </div>
   );
 };
 

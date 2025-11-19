@@ -1,5 +1,6 @@
 // ==================== All Import
-import React, { useEffect, useState } from "react";
+import { useEffect, useState } from "react";
+import { addToCart } from "@/utils/cart";
 
 const Menu = () => {
   // ==================== All useState
@@ -47,10 +48,10 @@ const Menu = () => {
   };
 
   return (
-    <>
+    <div className="bg-white max-w-7xl mx-auto shadow-sm">
       {/* ================= Menu Heading ================= */}
-      <section className="container mt-[85px] text-center">
-        <h1 className="font-PlayfairD font-normal text-[100px] leading-[96px]">
+      <section className="px-6 sm:px-8 lg:px-12 mt-12 text-center">
+        <h1 className="font-PlayfairD font-normal text-4xl sm:text-6xl lg:text-[100px] leading-[1.2]">
           Thực đơn của chúng tôi
         </h1>
         <p className="mt-5 font-DM_sans font-normal text-lg text-[#495460]">
@@ -59,15 +60,15 @@ const Menu = () => {
         </p>
 
         {/* ================= Category Buttons ================= */}
-        <ul className="flex justify-center gap-4 mt-[50px] font-DM_sans font-bold text-base text-[#2C2F24]">
+        <ul className="flex flex-wrap justify-center gap-4 mt-[50px] font-DM_sans font-bold text-base text-slate-700">
           {categories.map((cat) => (
             <button
               key={cat}
               onClick={() => handleFilter(cat)}
-              className={`w-[150px] h-12 rounded-full border-2 transition duration-400
+              className={`w-full sm:w-[150px] h-12 rounded-full border-2 transition-all duration-300 shadow-md hover:shadow-lg
                 ${selectedCategory === cat
-                  ? "bg-[#AD343E] text-white"
-                  : "hover:bg-[#AD343E] hover:text-white"
+                  ? "bg-gradient-to-r from-blue-600 to-indigo-600 text-white border-blue-600"
+                  : "bg-white border-blue-300 text-blue-600 hover:bg-blue-50 hover:border-blue-500"
                 }`}
             >
               {cat}
@@ -77,26 +78,51 @@ const Menu = () => {
       </section>
 
       {/* ================= Filtered Food List ================= */}
-      <section className="container mt-[88px] pb-[132px] flex flex-wrap justify-center gap-6">
+      <section className="px-6 sm:px-8 lg:px-12 mt-12 pb-16 flex flex-wrap justify-center gap-6">
         {filteredData.length > 0 ? (
           filteredData.map((item) => (
-            <ul
+            <div
+              data-card
               key={item._id}
-              className="w-[306px] pb-[34px] flex flex-col items-center gap-6 border-2 rounded-xl hover:scale-105 transition duration-400"
+              className="w-full sm:w-[306px] pb-4 flex flex-col items-center gap-4 border-2 border-slate-200 rounded-xl hover:border-blue-300 hover:shadow-xl transition-all duration-300 bg-white overflow-hidden"
             >
-              <img
-                src={item.image}
-                alt={item.name}
-                className="w-full h-[200px] object-cover rounded-t-xl"
-              />
-              <li className="font-DM_sans font-bold text-2xl text-[#AD343E]">
+              <div className="w-full h-[200px] overflow-hidden rounded-t-xl">
+                <img
+                  src={item.image}
+                  alt={item.name}
+                  className="w-full h-full object-cover hover:scale-110 transition-transform duration-500"
+                />
+              </div>
+              <h4 className="font-DM_sans font-bold text-2xl text-blue-600">
                 {formatPrice(item.price)}
-              </li>
-              <li className="font-DM_sans font-bold text-xl">{item.name}</li>
-              <li className="px-[30px] text-center font-DM_sans font-normal text-base">
+              </h4>
+              <h5 className="font-DM_sans font-bold text-xl">{item.name}</h5>
+              <p className="px-[30px] text-center font-DM_sans font-normal text-base">
                 {item.info}
-              </li>
-            </ul>
+              </p>
+
+              <div className="flex items-center gap-3 mt-auto w-full justify-center pt-2">
+                <input
+                  type="number"
+                  min={1}
+                  defaultValue={1}
+                  className="w-20 h-10 border rounded-lg px-2"
+                  onClick={(e) => e.stopPropagation()}
+                  onChange={() => {}}
+                />
+                <button
+                  className="px-4 py-2 rounded-full bg-gradient-to-r from-blue-600 to-indigo-600 text-white font-bold hover:from-blue-700 hover:to-indigo-700 shadow-md hover:shadow-lg transition"
+                  onClick={(e) => {
+                    const card = e.currentTarget.closest('[data-card]');
+                    const input = card?.querySelector('input[type="number"]');
+                    const qty = input ? Number(input.value) || 1 : 1;
+                    addToCart(item, qty);
+                  }}
+                >
+                  Thêm vào giỏ
+                </button>
+              </div>
+            </div>
           ))
         ) : (
           <p className="text-gray-500 text-center">
@@ -106,19 +132,20 @@ const Menu = () => {
       </section>
 
       {/* ================= Ordering Apps Section ================= */}
-      <section className="bg-[#F9F9F7]">
-        <ul className="container py-[120px] flex justify-between items-center flex-wrap gap-10">
-          <li className="w-full md:w-[346px]">
-            <h4 className="font-PlayfairD font-medium text-[55px] leading-[60px]">
-              Bạn có thể đặt qua ứng dụng
-            </h4>
-            <p className="mt-5 font-PlayfairD font-medium text-base leading-[24px]">
-              Đem lại sự tiện lợi cho bạn.
-            </p>
-          </li>
+      <section className="bg-gradient-to-b from-slate-50 to-white">
+        <div className="px-6 sm:px-8 lg:px-12 pt-16 pb-16">
+          <div className="flex flex-col md:flex-row justify-between items-center gap-10">
+            <div className="w-full md:w-[30%] flex-shrink-0">
+              <h4 className="font-PlayfairD font-medium text-3xl sm:text-4xl lg:text-[55px] leading-[1.3]">
+                Bạn có thể đặt qua ứng dụng
+              </h4>
+              <p className="mt-5 font-PlayfairD font-medium text-base leading-[24px]">
+                Đem lại sự tiện lợi cho bạn.
+              </p>
+            </div>
 
-          {/* ================= App Logos ================= */}
-          <ul className="flex flex-wrap justify-center gap-4 w-full md:w-[830px]">
+            {/* ================= App Logos ================= */}
+            <div className="flex flex-wrap justify-center gap-4 w-full md:w-[70%] flex-shrink-0">
             {[
               "uberEats",
               "grubHub",
@@ -133,15 +160,16 @@ const Menu = () => {
               <a
                 key={app}
                 href="#"
-                className="w-[220px] hover:scale-125 transition duration-300"
+                className="w-[220px] rounded-lg overflow-hidden shadow-md hover:shadow-xl transition-all duration-300"
               >
-                <img src={`/${app}.png`} alt={`${app}_image`} />
+                <img src={`/${app}.png`} alt={`${app}_image`} className="rounded-lg w-full h-full object-cover hover:scale-110 transition-transform duration-500" />
               </a>
             ))}
-          </ul>
-        </ul>
+            </div>
+          </div>
+        </div>
       </section>
-    </>
+    </div>
   );
 };
 

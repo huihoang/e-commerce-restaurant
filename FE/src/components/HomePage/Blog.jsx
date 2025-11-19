@@ -1,5 +1,5 @@
 // ==================== All Import
-import React, { useEffect, useState } from "react";
+import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 import axios from "axios";
 
@@ -30,10 +30,10 @@ const Blog = () => {
   };
 
   return (
-    <>
+    <div className="bg-white max-w-7xl mx-auto shadow-sm">
       {/* ================= Blog Head Part ================= */}
-      <section className="container text-center mt-[68px]">
-        <h1 className="font-PlayfairD font-normal text-[100px] leading-[96px]">
+      <section className="px-6 sm:px-8 lg:px-12 text-center mt-12">
+        <h1 className="font-PlayfairD font-normal text-[100px] leading-[1.2]">
           Bài viết
         </h1>
         <p className="mt-6 font-DM_sans font-normal text-lg">
@@ -43,25 +43,27 @@ const Blog = () => {
       </section>
 
       {/* ================= All Blogs Part ================= */}
-      <section className="container mt-[72px] flex flex-wrap justify-center gap-10">
+      <section className="px-6 sm:px-8 lg:px-12 mt-12 pb-16 flex flex-wrap justify-center gap-10">
         {/* ================= All Blogs Fetched From Api =================  */}
         {blog.map((items) => (
           <Link
             to={`/blog/${items._id}`}
             key={items._id}
-            className="w-[306px] flex flex-col gap-5 border-2 rounded-xl pb-[26px] hover:scale-105 transition duration-800 will-change-transform"
+            className="w-[306px] flex flex-col gap-5 border-2 border-slate-200 rounded-xl pb-[26px] hover:border-blue-300 hover:shadow-xl transition-all duration-300 bg-white overflow-hidden"
           >
-            <img src={items.image} alt={items.title} />
-            <ul className="ml-6 font-DM_sans font-medium text-sm">
+            <div className="w-full overflow-hidden">
+              <img src={items.image} alt={items.title} className="w-full h-full object-cover hover:scale-110 transition-transform duration-500" />
+            </div>
+            <p className="ml-6 font-DM_sans font-medium text-sm">
               {formatDate(items.createdAt)}
-            </ul>
-            <ul className="px-6 font-DM_sans font-medium text-xl">
+            </p>
+            <h5 className="px-6 font-DM_sans font-medium text-xl">
               {items.title}
-            </ul>
+            </h5>
           </Link>
-        ))}
+          ))}
       </section>
-    </>
+    </div>
   );
 };
 
