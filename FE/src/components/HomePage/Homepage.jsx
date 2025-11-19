@@ -18,13 +18,13 @@ const Homepage = () => {
           alt="banner_image"
           className="absolute inset-0 w-full h-full object-cover"
         />
-        <div className="relative z-10 flex flex-col items-center justify-center h-full text-center px-4 text-white">
+        <div className="relative z-10 flex flex-col items-center justify-center h-full text-center px-4 text-black bg-white/40 backdrop-blur-sm rounded-2xl p-6 sm:p-10">
           {/* --------- Header --------- */}
           <h1 className="font-PlayfairD text-[40px] sm:text-[60px] lg:text-[100px] font-normal leading-[1.2]">
             Tinh Hoa <br /> Ẩm Thực Việt
           </h1>
           <p className="mt-6 sm:mt-8 font-DM_sans text-base sm:text-xl font-normal">
-            Khám khá ẩm thực ba miền <br /> các món ngon đồng quê.
+            Khám phá ẩm thực ba miền <br /> các món ngon đồng quê.
           </p>
 
           {/* --------- Booking part --------- */}

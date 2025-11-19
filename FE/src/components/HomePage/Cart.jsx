@@ -1,5 +1,5 @@
 // ==================== All Import
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { Link } from "react-router-dom";
 import { getCart, updateQuantity, clearCart, addToCart } from "@/utils/cart";
 
@@ -13,6 +13,7 @@ const Cart = () => {
     note: "",
   });
   const [related, setRelated] = useState([]);
+  const sliderRef = useRef(null);
   const API_BASE_URL =
     import.meta.env.VITE_API_BASE_URL || "http://localhost:5000";
 
@@ -27,10 +28,34 @@ const Cart = () => {
     fetch(`${API_BASE_URL}/api/menus`)
       .then((r) => r.json())
       .then((data) => {
-        if (Array.isArray(data)) setRelated(data.slice(0, 4));
+        if (Array.isArray(data)) setRelated(data);
       })
       .catch(() => {});
   }, [API_BASE_URL]);
+
+  const handlePrev = () => {
+    const el = sliderRef.current;
+    if (!el) return;
+    const card = el.querySelector(".related-card");
+    const step = (card?.offsetWidth || 280) + 24;
+    if (el.scrollLeft <= 0) {
+      el.scrollTo({ left: el.scrollWidth, behavior: "smooth" });
+      return;
+    }
+    el.scrollBy({ left: -step, behavior: "smooth" });
+  };
+
+  const handleNext = () => {
+    const el = sliderRef.current;
+    if (!el) return;
+    const card = el.querySelector(".related-card");
+    const step = (card?.offsetWidth || 280) + 24;
+    if (el.scrollLeft + el.clientWidth + step >= el.scrollWidth) {
+      el.scrollTo({ left: 0, behavior: "smooth" });
+      return;
+    }
+    el.scrollBy({ left: step, behavior: "smooth" });
+  };
 
   const totalPrice = useMemo(
     () =>
@@ -243,24 +268,57 @@ const Cart = () => {
           <h3 className="font-PlayfairD font-medium text-2xl">
             Gợi ý món ăn
           </h3>
-          <div className="mt-6 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
-            {related.map((m) => (
-              <div key={m._id} className="border-2 border-slate-200 rounded-xl overflow-hidden bg-white hover:border-blue-300 hover:shadow-xl transition">
-                <div className="w-full h-[160px] overflow-hidden">
-                  <img src={m.image} alt={m.name} className="w-full h-full object-cover" />
+          <div className="mt-6 relative">
+            {/* Prev button */}
+            {related.length > 1 && (
+              <button
+                aria-label="Trượt trái"
+                onClick={handlePrev}
+                className="hidden sm:flex absolute -left-3 top-1/2 -translate-y-1/2 z-10 w-10 h-10 rounded-full bg-white border shadow hover:bg-blue-50 items-center justify-center"
+              >
+                ‹
+              </button>
+            )}
+
+            {/* Slider */}
+            <div
+              ref={sliderRef}
+              className="flex gap-6 overflow-x-auto scroll-smooth snap-x snap-mandatory pb-2 px-1 hide-scrollbar"
+            >
+              {related.map((m) => (
+                <div
+                  key={m._id}
+                  className="related-card snap-start min-w-[240px] sm:min-w-[260px] lg:min-w-[280px] border-2 border-slate-200 rounded-xl overflow-hidden bg-white hover:border-blue-300 hover:shadow-xl transition"
+                >
+                  <div className="w-full h-[160px] overflow-hidden">
+                    <img src={m.image} alt={m.name} className="w-full h-full object-cover" />
+                  </div>
+                  <div className="p-4">
+                    <h5 className="font-DM_sans font-bold text-base">{m.name}</h5>
+                    <p className="text-blue-600 font-bold mt-1">
+                      {Number(m.price).toLocaleString("vi-VN")} đ
+                    </p>
+                    <button
+                      className="mt-3 w-full py-2 rounded-full bg-gradient-to-r from-blue-600 to-indigo-600 text-white font-bold hover:from-blue-700 hover:to-indigo-700 shadow-md hover:shadow-lg transition"
+                      onClick={() => addToCart(m, 1)}
+                    >
+                      Thêm vào giỏ
+                    </button>
+                  </div>
                 </div>
-                <div className="p-4">
-                  <h5 className="font-DM_sans font-bold text-base">{m.name}</h5>
-                  <p className="text-blue-600 font-bold mt-1">{Number(m.price).toLocaleString("vi-VN")} đ</p>
-                  <button
-                    className="mt-3 w-full py-2 rounded-full bg-gradient-to-r from-blue-600 to-indigo-600 text-white font-bold hover:from-blue-700 hover:to-indigo-700 shadow-md hover:shadow-lg transition"
-                    onClick={() => addToCart(m, 1)}
-                  >
-                    Thêm vào giỏ
-                  </button>
-                </div>
-              </div>
-            ))}
+              ))}
+            </div>
+
+            {/* Next button */}
+            {related.length > 1 && (
+              <button
+                aria-label="Trượt phải"
+                onClick={handleNext}
+                className="hidden sm:flex absolute -right-3 top-1/2 -translate-y-1/2 z-10 w-10 h-10 rounded-full bg-white border shadow hover:bg-blue-50 items-center justify-center"
+              >
+                ›
+              </button>
+            )}
           </div>
         </div>
       </section>
