@@ -3,16 +3,50 @@ import { BsAlarm } from 'react-icons/bs'
 import { GrMultiple } from 'react-icons/gr'
 import { RiWindowLine } from 'react-icons/ri'
 import { FaGooglePlay } from 'react-icons/fa'
+import { AiFillStar } from 'react-icons/ai'
+
+const testimonials = [
+    {
+        quote: 'Nhà hàng tuyệt vời nhất',
+        content:
+            'Tối qua, chúng tôi đã dùng bữa tại đây và thật sự ấn tượng. Không gian ấm cúng, món ăn tròn vị.',
+        author: 'Lam Thanh',
+        location: 'Quận 1',
+        avatar: '/reviewer1.png',
+        rating: 4.9,
+        orders: '1.2K đơn đã giao',
+    },
+    {
+        quote: 'Ẩm thực tinh tế',
+        content:
+            'Menu phong phú, phục vụ lịch sự. Đặt bàn cuối tuần lúc nào cũng được chuẩn bị chu đáo.',
+        author: 'Trần Duy',
+        location: 'Quận 12',
+        avatar: '/reviewer2.png',
+        rating: 4.8,
+        orders: '980 đơn đặt bàn',
+    },
+    {
+        quote: 'Phục vụ đỉnh cao',
+        content:
+            'Chúng tôi đặt tiệc sinh nhật và mọi thứ hoàn hảo. Đặc biệt thích các món khai vị.',
+        author: 'Thanh Nga',
+        location: 'Quận 3',
+        avatar: '/reviewer3.png',
+        rating: 5,
+        orders: '1.5K lượt đánh giá',
+    },
+]
 
 const About = () => {
     return (
-        <div className="bg-white max-w-7xl mx-auto shadow-sm">
+        <div className='bg-white max-w-7xl mx-auto shadow-sm'>
             {/* ================= About Header Part ================= */}
             <section className='px-6 sm:px-8 lg:px-12 py-8 flex flex-col md:flex-row justify-between gap-6'>
 
                 {/* ---------- About Banner Part ---------- */}
-                <div className="w-full md:w-[50%] overflow-hidden rounded-lg">
-                    <img src="/aboutBanner.jpg" alt="banner_image" className="w-full h-auto object-cover hover:scale-110 transition-transform duration-500" />
+                <div className='w-full md:w-[50%] overflow-hidden rounded-lg'>
+                    <img src='/aboutBanner.jpg' alt='banner_image' className='w-full h-auto object-cover hover:scale-110 transition-transform duration-500' />
                 </div>
 
                 {/* ---------- About Banner Info Part ---------- */}
@@ -31,7 +65,7 @@ const About = () => {
 
             {/* ================= About Video Part ================= */}
             <section className='w-full relative'>
-                <img src="/aboutVideo.png" alt="about_video_image" className='w-full bg-cover' />
+                <img src='/aboutVideo.png' alt='about_video_image' className='w-full bg-cover' />
                 <div className='absolute top-[40%] left-[50%] transform -translate-x-1/2 -translate-y-1/2 w-full text-center'>
                     <button className='p-5 bg-white rounded-full text-xl hover:bg-blue-50 shadow-lg hover:shadow-xl transition-all duration-300'><FaGooglePlay /></button>
                     <h3 className='w-full text-center font-PlayfairD font-medium text-2xl sm:text-4xl lg:text-[55px] leading-[1.3] mt-[34px] absolute top-[60%] left-1/2 transform -translate-x-1/2 text-white'>Cảm nhận không gian Việt tại nhà hàng chúng tôi</h3>
@@ -107,64 +141,51 @@ const About = () => {
 
                     {/* ---------- inside part image ---------- */}
                     <div className='w-full md:w-[45%] overflow-hidden rounded-lg'>
-                        <img src="/cooking.png" alt="cooking_image" className="object-cover hover:scale-110 transition-transform duration-500" />
+                        <img src='/cooking.png' alt='cooking_image' className='object-cover hover:scale-110 transition-transform duration-500' />
                     </div>
                 </div>
             </section>
 
             {/* ================= Review Part ================= */}
             <section className='px-6 sm:px-8 lg:px-12 pt-16 pb-16'>
-
-                {/* ------ header ------ */}
                 <h4 className='font-PlayfairD font-medium text-3xl sm:text-4xl lg:text-[55px] leading-[1.3] text-[#2C2F24] text-center'>Khách hàng của chúng tôi</h4>
 
-                {/* ------ all reviewers ------ */}
-                <div className='mt-16 flex flex-col md:flex-row justify-between gap-6'>
-
-                    {/* ------ reviewer ------ */}
-                    <div className='w-full md:w-[32%] p-[35px] flex flex-col bg-gradient-to-br from-slate-50 to-white gap-8 hover:shadow-xl hover:border-blue-200 border-2 border-transparent rounded-2xl transition-all duration-300'>
-                        <h5 className='font-DM_sans font-bold text-2xl leading-normal text-blue-600'>&quot;Nhà hàng tuyệt vời nhất&quot;</h5>
-                        <p className='font-DM_sans font-normal text-lg leading-7'>Tối qua, chúng tôi đã dùng bữa tại đây và thật sự ấn tượng. Ngay từ khoảnh khắc bước vào, chúng tôi đã được đón chào bằng không gian ấm cúng và những nụ cười thân thiện.</p>
-                        <div className='flex gap-5'>
-                            <div className="overflow-hidden rounded-full">
-                                <img src='/reviewer3.png' alt="reviewer_img" className="w-full h-full object-cover hover:scale-110 transition-transform duration-500" />
+                <div className='mt-16 grid md:grid-cols-3 gap-6'>
+                    {testimonials.map((item) => (
+                        <div
+                            key={item.author}
+                            className='p-[35px] flex flex-col bg-gradient-to-br from-slate-50 to-white gap-6 hover:shadow-xl hover:border-blue-200 border-2 border-transparent rounded-2xl transition-all duration-300'
+                        >
+                            <div className='flex items-center justify-between'>
+                                <h5 className='font-DM_sans font-bold text-2xl leading-normal text-blue-600'>
+                                    &quot;{item.quote}&quot;
+                                </h5>
+                                <span className='flex items-center gap-1 text-amber-400 font-semibold'>
+                                    <AiFillStar />
+                                    {item.rating}
+                                </span>
                             </div>
-                            <div className='flex flex-col justify-center gap-1'>
-                                <p className='font-DM_sans font-bold text-base'>Thanh Nga</p>
-                                <p className='font-DM_sans font-normal text-base'>Quận 3</p>
-                            </div>
-                        </div>
-                    </div>
-
-                    {/* ------ reviewer ------ */}
-                    <div className='w-full md:w-[32%] p-[35px] flex flex-col bg-gradient-to-br from-slate-50 to-white gap-8 hover:shadow-xl hover:border-blue-200 border-2 border-transparent rounded-2xl transition-all duration-300'>
-                        <h5 className='font-DM_sans font-bold text-2xl leading-normal text-blue-600'>&quot;Nhà hàng tuyệt vời nhất&quot;</h5>
-                        <p className='font-DM_sans font-normal text-lg leading-7'>Tối qua, chúng tôi đã dùng bữa tại đây và thật sự ấn tượng. Ngay từ khoảnh khắc bước vào, chúng tôi đã được đón chào bằng không gian ấm cúng và những nụ cười thân thiện.</p>
-                        <div className='flex gap-5'>
-                            <div className="overflow-hidden rounded-full">
-                                <img src='/reviewer3.png' alt="reviewer_img" className="w-full h-full object-cover hover:scale-110 transition-transform duration-500" />
-                            </div>
-                            <div className='flex flex-col justify-center gap-1'>
-                                <p className='font-DM_sans font-bold text-base'>Thanh Nga</p>
-                                <p className='font-DM_sans font-normal text-base'>Quận 3</p>
-                            </div>
-                        </div>
-                    </div>
-
-                    {/* ------ reviewer ------ */}
-                    <div className='w-full md:w-[32%] p-[35px] flex flex-col bg-gradient-to-br from-slate-50 to-white gap-8 hover:shadow-xl hover:border-blue-200 border-2 border-transparent rounded-2xl transition-all duration-300'>
-                        <h5 className='font-DM_sans font-bold text-2xl leading-normal text-blue-600'>&quot;Nhà hàng tuyệt vời nhất&quot;</h5>
-                        <p className='font-DM_sans font-normal text-lg leading-7'>Tối qua, chúng tôi đã dùng bữa tại đây và thật sự ấn tượng. Ngay từ khoảnh khắc bước vào, chúng tôi đã được đón chào bằng không gian ấm cúng và những nụ cười thân thiện.</p>
-                        <div className='flex gap-5'>
-                            <div className="overflow-hidden rounded-full">
-                                <img src='/reviewer3.png' alt="reviewer_img" className="w-full h-full object-cover hover:scale-110 transition-transform duration-500" />
-                            </div>
-                            <div className='flex flex-col justify-center gap-1'>
-                                <p className='font-DM_sans font-bold text-base'>Thanh Nga</p>
-                                <p className='font-DM_sans font-normal text-base'>Quận 3</p>
+                            <p className='font-DM_sans text-lg leading-7 text-slate-600'>
+                                {item.content}
+                            </p>
+                            <div className='flex gap-5 items-center'>
+                                <div className='overflow-hidden rounded-full border-2 border-white shadow-lg w-16 h-16'>
+                                    <img src={item.avatar} alt='reviewer_img' className='w-full h-full object-cover' />
+                                </div>
+                                <div className='flex flex-col justify-center gap-1'>
+                                    <p className='font-DM_sans font-bold text-base'>
+                                        {item.author}
+                                    </p>
+                                    <p className='font-DM_sans text-base text-slate-500'>
+                                        {item.location}
+                                    </p>
+                                    <p className='text-xs text-emerald-500 font-semibold'>
+                                        {item.orders}
+                                    </p>
+                                </div>
                             </div>
                         </div>
-                    </div>
+                    ))}
                 </div>
             </section>
         </div>

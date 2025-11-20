@@ -7,7 +7,9 @@ import AdminEditBookingModal from "./AdminEditBookingModal";
 const AdminBookingList = () => {
   const [bookings, setBookings] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [currentPage, setCurrentPage] = useState(1);
   const [editingBooking, setEditingBooking] = useState(null);
+  const ITEMS_PER_PAGE = 5;
   const API_BASE_URL =
     import.meta.env.VITE_API_BASE_URL || "http://localhost:5000";
 
@@ -23,6 +25,7 @@ const AdminBookingList = () => {
           (a, b) => new Date(b.createdAt) - new Date(a.createdAt)
         );
         setBookings(sorted);
+        setCurrentPage(1);
       } catch (err) {
         console.error("❌ Lỗi khi lấy danh sách đặt bàn:", err.message);
       } finally {
@@ -88,6 +91,46 @@ const AdminBookingList = () => {
     setEditingBooking(null); // Đóng modal sau khi cập nhật
   };
 
+  const totalPages = Math.max(1, Math.ceil(bookings.length / ITEMS_PER_PAGE));
+  const startIdx = (currentPage - 1) * ITEMS_PER_PAGE;
+  const displayedBookings = bookings.slice(startIdx, startIdx + ITEMS_PER_PAGE);
+  const pageStart = bookings.length === 0 ? 0 : startIdx + 1;
+  const pageEnd = Math.min(startIdx + displayedBookings.length, bookings.length);
+
+  useEffect(() => {
+    if (currentPage > totalPages) {
+      setCurrentPage(totalPages);
+    }
+  }, [currentPage, totalPages]);
+
+  const getVisiblePages = () => {
+    const maxVisible = 5;
+    if (totalPages <= maxVisible) {
+      return Array.from({ length: totalPages }, (_, idx) => idx + 1);
+    }
+
+    const pages = [1];
+    let start = Math.max(2, currentPage - 1);
+    let end = Math.min(totalPages - 1, currentPage + 1);
+
+    if (start > 2) {
+      pages.push("left-ellipsis");
+    }
+
+    for (let i = start; i <= end; i += 1) {
+      pages.push(i);
+    }
+
+    if (end < totalPages - 1) {
+      pages.push("right-ellipsis");
+    }
+
+    pages.push(totalPages);
+    return pages;
+  };
+
+  const visiblePages = getVisiblePages();
+
   return (
     <div className="max-w-6xl mx-auto p-6">
       {loading ? (
@@ -95,7 +138,7 @@ const AdminBookingList = () => {
       ) : bookings.length === 0 ? (
         <p className="text-center text-gray-500">Không có đơn đặt bàn nào.</p>
       ) : (
-        bookings.map((booking) => (
+        displayedBookings.map((booking) => (
           <div
             key={booking._id}
             className="relative bg-white rounded-lg shadow p-4 mb-4 border border-gray-200"
@@ -180,6 +223,61 @@ const AdminBookingList = () => {
             </button>
           </div>
         ))
+      )}
+
+      {bookings.length > 0 && (
+        <div className="mt-10 flex flex-col items-center gap-4 rounded-2xl border border-slate-200 bg-white/80 px-6 py-5 shadow-sm backdrop-blur">
+          <div className="text-sm font-medium text-slate-600">
+            Hiển thị <span className="text-slate-900">{pageStart}</span>–
+            <span className="text-slate-900">{pageEnd}</span> /{" "}
+            <span className="font-semibold">{bookings.length}</span> đơn
+          </div>
+          <div className="flex flex-wrap items-center justify-center gap-2">
+            <button
+              onClick={() => setCurrentPage((prev) => Math.max(prev - 1, 1))}
+              className="flex items-center gap-2 rounded-full border border-slate-200 px-4 py-2 text-sm font-semibold text-slate-600 transition hover:border-amber-400 hover:text-amber-600 disabled:cursor-not-allowed disabled:border-slate-100 disabled:text-slate-300"
+              disabled={currentPage === 1}
+            >
+              ← Trước
+            </button>
+            <div className="flex items-center gap-1 rounded-full bg-slate-100/60 px-2 py-1">
+              {visiblePages.map((page, idx) =>
+                typeof page === "string" ? (
+                  <span
+                    key={`${page}-${idx}`}
+                    className="px-2 text-sm text-slate-400"
+                  >
+                    ...
+                  </span>
+                ) : (
+                  <button
+                    key={page}
+                    onClick={() => setCurrentPage(page)}
+                    className={`h-10 w-10 rounded-full text-sm font-semibold transition ${
+                      page === currentPage
+                        ? "bg-amber-500 text-white shadow-lg shadow-amber-200"
+                        : "text-slate-600 hover:bg-white hover:shadow-sm"
+                    }`}
+                  >
+                    {page}
+                  </button>
+                )
+              )}
+            </div>
+            <button
+              onClick={() =>
+                setCurrentPage((prev) => Math.min(prev + 1, totalPages))
+              }
+              className="flex items-center gap-2 rounded-full border border-slate-200 px-4 py-2 text-sm font-semibold text-slate-600 transition hover:border-amber-400 hover:text-amber-600 disabled:cursor-not-allowed disabled:border-slate-100 disabled:text-slate-300"
+              disabled={currentPage === totalPages}
+            >
+              Sau →
+            </button>
+          </div>
+          <span className="text-xs uppercase tracking-[0.3em] text-slate-400">
+            Trang {currentPage} / {totalPages}
+          </span>
+        </div>
       )}
 
       {/* ==================== Modal chỉnh sửa */}

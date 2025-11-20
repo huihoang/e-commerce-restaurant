@@ -53,15 +53,15 @@ const Contact = () => {
 
     // Check for validation
     if (name === "") {
-      setNameError("Please Enter Your Name");
+      setNameError("Vui lòng nhập họ tên");
       isValid = false;
     }
     if (email === "") {
-      setEmailError("Please Enter Your Email");
+      setEmailError("Vui lòng nhập email");
       isValid = false;
     }
     if (massage === "") {
-      setMassageError("Please Write A Message Below");
+      setMassageError("Vui lòng nhập nội dung");
       isValid = false;
     }
 
@@ -92,7 +92,7 @@ const Contact = () => {
         );
       }
     } catch {
-      setErrorMessage("An error occurred. Please try again later.");
+      setErrorMessage("Có lỗi xảy ra, vui lòng thử lại sau.");
     }
   };
 

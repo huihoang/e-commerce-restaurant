@@ -19,6 +19,11 @@ const Menu = () => {
     "Tráng Miệng",
   ];
 
+  const mockBadges = ["Best Seller", "Chef's Pick", "Ưu đãi", "Món mới"];
+  const getBadge = (index) => mockBadges[index % mockBadges.length];
+  const getMockRating = (index) => (4.5 + (index % 5) * 0.1).toFixed(1);
+  const getMockOrders = (index) => `${400 + index * 37} lượt đặt`;
+
   // ==================== Helper: Format giá tiền
   const formatPrice = (price) => {
     if (!price) return "";
@@ -80,12 +85,15 @@ const Menu = () => {
       {/* ================= Filtered Food List ================= */}
       <section className="px-6 sm:px-8 lg:px-12 mt-12 pb-16 flex flex-wrap justify-center gap-6">
         {filteredData.length > 0 ? (
-          filteredData.map((item) => (
+          filteredData.map((item, index) => (
             <div
               data-card
               key={item._id}
-              className="w-full sm:w-[306px] pb-4 flex flex-col items-center gap-4 border-2 border-slate-200 rounded-xl hover:border-blue-300 hover:shadow-xl transition-all duration-300 bg-white overflow-hidden"
+              className="w-full sm:w-[306px] pb-4 flex flex-col items-center gap-4 border-2 border-slate-200 rounded-xl hover:border-blue-300 hover:shadow-xl transition-all duration-300 bg-white overflow-hidden relative"
             >
+              <div className="absolute top-4 left-4 z-10 px-3 py-1 rounded-full bg-white/90 text-xs font-semibold text-blue-600 shadow">
+                {getBadge(index)}
+              </div>
               <div className="w-full h-[200px] overflow-hidden rounded-t-xl">
                 <img
                   src={item.image}
@@ -100,6 +108,13 @@ const Menu = () => {
               <p className="px-[30px] text-center font-DM_sans font-normal text-base">
                 {item.info}
               </p>
+              <div className="flex items-center gap-3 text-sm font-semibold text-slate-600">
+                <span className="flex items-center gap-1 text-amber-500">
+                  ★ {getMockRating(index)}
+                </span>
+                <span className="text-slate-400">•</span>
+                <span>{getMockOrders(index)}</span>
+              </div>
 
               <div className="flex items-center gap-3 mt-auto w-full justify-center pt-2">
                 <input
