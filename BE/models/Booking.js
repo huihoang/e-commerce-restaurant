@@ -19,7 +19,7 @@ const bookingSchema = new mongoose.Schema(
       address: { type: String, required: false },
     },
 
-    people: { type: Number, default: false },
+    people: { type: Number, default: 1 },
     note: String,
     selectedDishes: [
       {

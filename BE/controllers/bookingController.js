@@ -17,12 +17,9 @@ const calculateTotalAmount = async (selectedDishes) => {
 
 const createBooking = async (req, res) => {
     try {
-        const { name, phone, date, time, ship, people, person, note, selectedDishes, payment, totalAmount } =
-            req.body;
+        const { name, phone, date, time, ship, people, note, selectedDishes, payment, totalAmount } = req.body;
 
-        const finalPeople = people || person; // hỗ trợ cả "people" hoặc "person"
-
-        if (!name || !phone || !date || !time || !finalPeople) {
+        if (!name || !phone || !date || !time || !people) {
             return res
                 .status(400)
                 .json({ message: "Vui lòng cung cấp đầy đủ thông tin." });
@@ -52,8 +49,8 @@ const createBooking = async (req, res) => {
             phone,
             date,
             time,
-            ship: ship || { isShip: false, address: "" },
-            people: finalPeople,
+            ship,
+            people,
             note,
             selectedDishes: formattedDishes,
             payment: payment || { orderId: moment(date).format('DDHHmmss') },

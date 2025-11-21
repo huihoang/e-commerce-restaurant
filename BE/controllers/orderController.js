@@ -70,7 +70,7 @@ function createPaymentUrl(req, res, next) {
     //todo lưu vnp_Params vào db
     req.body = {
         ...req.body,
-        payment: { orderId: orderId, isPaid: false, paidAt: null, paymentMethod: req.body.payment.paymentMethod },
+        payment: { ...req.body.payment, orderId: orderId, isPaid: false, paidAt: null },
         paymentUrl: vnpUrl
     };
     bookingController.createBooking(req, res);
