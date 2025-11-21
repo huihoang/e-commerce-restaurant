@@ -1,5 +1,5 @@
-const { get } = require("mongoose");
-const Booking = require('../models/Booking');
+// controllers/adminController.js
+const Booking = require('../models/Booking')
 
 const getAllBooking = async (req, res) => {
     try {
@@ -88,4 +88,4 @@ const updateBooking = async (req, res) => {
     }
 }
 
-module.exports = { getAllBooking, updateBookingPay, deleteBooking, updateBooking }
+module.exports = { getAllBooking, updateBookingPay, deleteBooking, updateBooking };

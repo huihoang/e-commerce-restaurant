@@ -1,5 +1,5 @@
-const { model, get } = require("mongoose");
-const Contact = require("../models/Contact");
+// controllers/contactController.js
+const Contact = require('../models/Contact');
 
 const createContact = async (req, res) => {
     const { name, email, subject, message } = req.body;
@@ -11,7 +11,8 @@ const createContact = async (req, res) => {
     } catch (error) {
         res.status(500).json({ message: "Error saving contact form", error });
     }
-}
+};
+
 const getContact = async (req, res) => {
     try {
         const contacts = await Contact.find();
@@ -20,7 +21,7 @@ const getContact = async (req, res) => {
         console.error(error);
         res.status(500).json({ message: "Error fetching contacts" });
     }
-}
+};
 
 const deleteContact = async (req, res) => {
     const { id } = req.params; // Lấy ID từ params
@@ -38,6 +39,10 @@ const deleteContact = async (req, res) => {
         console.error(error);
         res.status(500).json({ message: "Error deleting contact", error });
     }
-}
+};
 
-module.exports = { createContact, getContact, deleteContact }
+module.exports = {
+    createContact,
+    getContact,
+    deleteContact
+};

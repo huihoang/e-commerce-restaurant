@@ -1,4 +1,7 @@
-const Booking = require('../models/Booking');
+// controllers/bookingController.js
+const Booking = require('../models/Booking')
+const MenuItem = require('../models/MenuItem')
+const moment = require('moment');
 
 // ==================== Tính tổng tiền
 const calculateTotalAmount = async (selectedDishes) => {
@@ -11,9 +14,10 @@ const calculateTotalAmount = async (selectedDishes) => {
     }
     return total;
 };
+
 const createBooking = async (req, res) => {
     try {
-        const { name, phone, date, time, people, person, note, selectedDishes } =
+        const { name, phone, date, time, ship, people, person, note, selectedDishes, payment, totalAmount } =
             req.body;
 
         const finalPeople = people || person; // hỗ trợ cả "people" hoặc "person"
@@ -32,9 +36,14 @@ const createBooking = async (req, res) => {
                 quantity: dish.quantity || 1,
             })) || [];
 
-        let totalAmount = 0;
-        if (formattedDishes.length > 0) {
+        // tính tiền tại quầy, ko giảm giá
+        if (formattedDishes.length > 0
+            && (userId != null || totalAmount == null)) {
             totalAmount = await calculateTotalAmount(formattedDishes);
+        }
+
+        if (totalAmount < 0) {
+            totalAmount = 30000; // Giá trị mặc định nếu chỉ đặt bàn không món ăn
         }
 
         const newBooking = new Booking({
@@ -43,37 +52,43 @@ const createBooking = async (req, res) => {
             phone,
             date,
             time,
+            ship: ship || { isShip: false, address: "" },
             people: finalPeople,
             note,
             selectedDishes: formattedDishes,
-            totalAmount,
+            payment: payment || { orderId: moment(date).format('DDHHmmss') },
+            totalAmount: totalAmount,
         });
+        await newBooking.save();
 
-        const savedBooking = await newBooking.save();
-        res
-            .status(201)
-            .json({ message: "Đặt bàn thành công!", booking: savedBooking });
+        res.status(201)
+            .json({ code: 201, message: "Để hoàn tất đặt món, vui lòng thanh toán!", data: { payment, paymentUrl: req.body.paymentUrl } });
     } catch (err) {
-        console.error("❌ Lỗi khi tạo đơn đặt bàn:", err.message);
+        console.error("❌ Lỗi khi tạo đơn đặt món:", err.message);
         res
             .status(500)
-            .json({ message: "Lỗi khi tạo đơn đặt bàn. Vui lòng thử lại sau." });
+            .json({ message: "Lỗi khi tạo đơn đặt món. Vui lòng thử lại sau." });
     }
-}
+};
 
 const getBookingHistory = async (req, res) => {
     try {
         const userId = req.user.id;
-        const bookings = await Booking.find({ userId })
+        const bookings = await Booking.find({
+            $or: [
+                { userId: req.user.id },
+                { userId: null }
+            ]
+        })
             .sort({ date: -1 })
             .populate("selectedDishes.dishId");
 
         res.json(bookings);
     } catch (err) {
-        console.error("❌ Lỗi khi lấy lịch sử đặt bàn:", err.message);
-        res.status(500).json({ message: "Lỗi khi lấy lịch sử đặt bàn" });
+        console.error("❌ Lỗi khi lấy lịch sử đặt món:", err.message);
+        res.status(500).json({ message: "Lỗi khi lấy lịch sử đặt món" });
     }
-}
+};
 
 const updateBooking = async (req, res) => {
     try {
@@ -120,7 +135,7 @@ const updateBooking = async (req, res) => {
         console.error("❌ Lỗi khi chỉnh sửa đặt bàn:", err.message);
         res.status(500).json({ message: "Lỗi khi chỉnh sửa đặt bàn." });
     }
-}
+};
 
 const addDish = async (req, res) => {
     try {
@@ -156,7 +171,7 @@ const addDish = async (req, res) => {
         console.error("❌ Lỗi khi thêm món ăn:", err.message);
         res.status(500).json({ message: "Lỗi khi thêm món ăn." });
     }
-}
+};
 
 const removeDish = async (req, res) => {
     try {
@@ -192,7 +207,7 @@ const removeDish = async (req, res) => {
         console.error("❌ Lỗi khi xóa món ăn:", err.message);
         res.status(500).json({ message: "Lỗi khi xóa món ăn." });
     }
-}
+};
 
 const deleteBooking = async (req, res) => {
     try {
@@ -213,7 +228,7 @@ const deleteBooking = async (req, res) => {
         console.error("❌ Lỗi khi xóa đặt bàn:", err.message);
         res.status(500).json({ message: "Lỗi khi xóa đặt bàn." });
     }
-}
+};
 
 const updateBookingPay = async (req, res) => {
     try {
@@ -228,7 +243,8 @@ const updateBookingPay = async (req, res) => {
                 .json({ message: "Không tìm thấy đơn đặt bàn để thanh toán." });
         }
 
-        booking.isPaid = true;
+        booking.payment.isPaid = true;
+        booking.payment.paidAt = new Date();
         await booking.save();
 
         res.json({ message: "Thanh toán thành công!", booking });
@@ -236,7 +252,7 @@ const updateBookingPay = async (req, res) => {
         console.error("❌ Lỗi khi cập nhật thanh toán:", err.message);
         res.status(500).json({ message: "Lỗi khi thanh toán." });
     }
-}
+};
 
 module.exports = {
     createBooking,
@@ -246,4 +262,4 @@ module.exports = {
     removeDish,
     deleteBooking,
     updateBookingPay
-}
+};

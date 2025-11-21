@@ -1,9 +1,10 @@
 // routes/bookingRoutes.js
 const express = require("express");
-const router = express.Router();
 const authenticateToken = require("../middleware/authMiddleware");
 const authenticateTokenOptional = require("../middleware/authenticateTokenOptional");
 const bookingController = require('../controllers/bookingController')
+
+const router = express.Router();
 
 // ==================== Đặt bàn (POST)
 router.post("/", authenticateTokenOptional, bookingController.createBooking);

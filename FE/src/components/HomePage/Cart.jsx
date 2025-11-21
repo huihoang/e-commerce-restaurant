@@ -32,7 +32,7 @@ const Cart = () => {
       .then((data) => {
         if (Array.isArray(data)) setRelated(data);
       })
-      .catch(() => {});
+      .catch(() => { });
   }, [API_BASE_URL]);
 
   const handlePrev = () => {
@@ -89,10 +89,103 @@ const Cart = () => {
   };
 
   const handleOrder = () => {
-    // Placeholder: submit order or booking
-    alert("Đặt hàng/Đặt bàn thành công! Cảm ơn bạn.");
-    clearCart();
-    setItems([]);
+    fetch(`${API_BASE_URL}/api/order/create_payment_url`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        bankCode: "",
+        // Thông tin liên hệ
+        name: customer.name,
+        phone: customer.phone,
+
+        // Thông tin ngày ăn / ngày giao hàng
+        date: new Date().toISOString().split("T")[0],
+        time: new Date().toTimeString().split(" ")[0].slice(0, 5),
+
+        ship: {
+          isShip: fulfillment === "delivery",
+          address: customer.address,
+        },
+
+        people: 1,
+        note: customer.note,
+        selectedDishes: [
+          ...items.map((dish) => ({
+            dishId: dish._id,
+            quantity: dish.quantity || 1,
+          })),
+        ],
+        payment: {
+          paymentMethod: paymentMethod,
+        },
+        totalAmount: finalTotal,
+        language: "vn",
+      }),
+    })
+      .then(async (r) => {
+        const contentType = r.headers.get("content-type") || "";
+        if (!r.ok) {
+          const text = await r.text();
+          throw new Error(`Server error ${r.status}: ${text}`);
+        }
+        if (contentType.includes("application/json")) {
+          return r.json();
+        }
+        return r.text();
+      })
+      .then((data) => {
+        if (data.data && typeof data.data === "object" && data.data.paymentUrl) {
+          const { paymentUrl, payment } = data.data;
+          //! cách hiển thị 1: Chuyển hướng trang
+          // nhờ be redirect về đúng trang sau thanh toán
+          // fetch(`${API_BASE_URL}/api/order/returnUrl`, {
+          //   method: "PUT",
+          //   headers: {
+          //     "Content-Type": "application/json",
+          //   },
+          //   body: JSON.stringify({
+          //     return: window.location.href, //`${API_BASE_URL}/api/order/order_status/${payment.orderId}`
+          //   }),
+          // })
+          // window.location.href = paymentUrl;
+
+          //! cách hiển thị 2: Mở VNPAY trong popup
+          let paymentWindow = window.open(paymentUrl, '_blank');
+
+          // Poll trạng thái đơn hàng mỗi 2s
+          const interval = setInterval(async () => {
+            // không cho tắt trừ khi hủy
+            if (paymentWindow.closed) {
+              paymentWindow = window.open(paymentUrl, "_blank");
+            }
+
+            const res = await fetch(`${API_BASE_URL}/api/order/order_status/${payment.orderId}`).then(r => r.json());
+            if (res.data.payment.paidAt !== null) {
+              console.log("payment status:", res.data.payment);
+              clearInterval(interval);
+              paymentWindow.close();
+            }
+          }, 2000);
+
+
+          //todo chuyển trang hiển thị kết quả đặt món, biên lai
+
+
+
+
+        } else {
+          alert("Không lấy được URL thanh toán: " + JSON.stringify(data));
+        }
+
+        clearCart();
+        setItems([]);
+      })
+      .catch((err) => {
+        console.error(err);
+        alert("Lỗi khi tạo thanh toán: " + (err?.message || err));
+      });
   };
 
   return (
@@ -281,11 +374,10 @@ const Cart = () => {
                         key={option.id}
                         type="button"
                         onClick={() => setFulfillment(option.id)}
-                        className={`px-4 py-2 rounded-full border transition ${
-                          fulfillment === option.id
-                            ? "bg-blue-600 text-white border-blue-600"
-                            : "bg-white text-slate-700 border-slate-200 hover:border-blue-300"
-                        }`}
+                        className={`px-4 py-2 rounded-full border transition ${fulfillment === option.id
+                          ? "bg-blue-600 text-white border-blue-600"
+                          : "bg-white text-slate-700 border-slate-200 hover:border-blue-300"
+                          }`}
                       >
                         {option.label}
                       </button>
@@ -308,11 +400,10 @@ const Cart = () => {
                   </p>
                   <div className="flex flex-col gap-3">
                     <label
-                      className={`flex items-start gap-3 border rounded-xl p-3 cursor-pointer transition ${
-                        paymentMethod === "bank"
-                          ? "border-blue-500 bg-blue-50"
-                          : "border-slate-200 bg-white"
-                      }`}
+                      className={`flex items-start gap-3 border rounded-xl p-3 cursor-pointer transition ${paymentMethod === "bank"
+                        ? "border-blue-500 bg-blue-50"
+                        : "border-slate-200 bg-white"
+                        }`}
                     >
                       <input
                         type="radio"
@@ -331,11 +422,10 @@ const Cart = () => {
                     </label>
 
                     <label
-                      className={`flex items-start gap-3 border rounded-xl p-3 cursor-pointer transition ${
-                        paymentMethod === "cash"
-                          ? "border-blue-500 bg-blue-50"
-                          : "border-slate-200 bg-white"
-                      }`}
+                      className={`flex items-start gap-3 border rounded-xl p-3 cursor-pointer transition ${paymentMethod === "cash"
+                        ? "border-blue-500 bg-blue-50"
+                        : "border-slate-200 bg-white"
+                        }`}
                     >
                       <input
                         type="radio"
