@@ -1,6 +1,8 @@
 import { useState } from "react";
+import { useNotification } from "@/contexts/NotificationContext";
 
 const Contact = () => {
+  const { showSuccess, showError } = useNotification();
   // ==================== All Hooks
   const [name, setName] = useState("");
   const [nameError, setNameError] = useState("");
@@ -9,8 +11,6 @@ const Contact = () => {
   const [subject, setSubject] = useState("");
   const [massage, setMassage] = useState("");
   const [massageError, setMassageError] = useState("");
-  const [successMessage, setSuccessMessage] = useState("");
-  const [errorMessage, setErrorMessage] = useState("");
   const API_BASE_URL =
     import.meta.env.VITE_API_BASE_URL || "http://localhost:5000";
 
@@ -42,12 +42,10 @@ const Contact = () => {
   const handleSubmit = async (e) => {
     e.preventDefault();
 
-    // Reset error and success messages
+    // Reset error messages
     setNameError("");
     setEmailError("");
     setMassageError("");
-    setSuccessMessage("");
-    setErrorMessage("");
 
     let isValid = true;
 
@@ -80,19 +78,19 @@ const Contact = () => {
       const data = await response.json();
 
       if (response.ok) {
-        setSuccessMessage("Nội dung liên hệ của bạn đã được gửi thành công");
+        showSuccess("Nội dung liên hệ của bạn đã được gửi thành công!");
         // Clear the form
         setName("");
         setEmail("");
         setSubject("");
         setMassage("");
       } else {
-        setErrorMessage(
+        showError(
           data.message || "Bạn vui lòng điền đầy đủ thông tin chính xác"
         );
       }
     } catch {
-      setErrorMessage("Có lỗi xảy ra, vui lòng thử lại sau.");
+      showError("Có lỗi xảy ra, vui lòng thử lại sau.");
     }
   };
 
@@ -180,17 +178,6 @@ const Contact = () => {
               </button>
             </div>
 
-            {/* Success/Error message */}
-            {successMessage && (
-              <p className="text-green-500 text-center mt-4 font-bold">
-                {successMessage}
-              </p>
-            )}
-            {errorMessage && (
-              <p className="text-red-500 text-center mt-4 font-bold">
-                {errorMessage}
-              </p>
-            )}
           </div>
         </form>
       </section>

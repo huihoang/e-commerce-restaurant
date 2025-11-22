@@ -1,7 +1,10 @@
 // ==================== All Import
-import { useState } from "react";
+import { useState, useEffect } from "react";
+import { useNavigate } from "react-router-dom";
+import { useNotification } from "@/contexts/NotificationContext";
 
-const Auth = ({ setIsLoggedIn, setRole }) => {
+const Auth = ({ setIsLoggedIn, setRole, isLoggedIn, role }) => {
+  const { showSuccess, showError } = useNotification();
   // ==================== All Hooks
   const [form, setForm] = useState("login");
   const [username, setUsername] = useState("");
@@ -9,6 +12,13 @@ const Auth = ({ setIsLoggedIn, setRole }) => {
   const [password, setPassword] = useState("");
   const API_BASE_URL =
     import.meta.env.VITE_API_BASE_URL || "http://localhost:5000";
+  const navigate = useNavigate();
+
+  useEffect(() => {
+    if (isLoggedIn && role) {
+      navigate(role === "admin" ? "/admin" : "/user", { replace: true });
+    }
+  }, [isLoggedIn, role, navigate]);
 
   // ==================== All Functions
   // -------- handle login
@@ -26,8 +36,10 @@ const Auth = ({ setIsLoggedIn, setRole }) => {
       setIsLoggedIn(true);
       setRole(data.role);
       setForm("logout");
+      showSuccess("Đăng nhập thành công!");
+      navigate(data.role === "admin" ? "/admin" : "/user", { replace: true });
     } else {
-      alert(data.message);
+      showError(data.message || "Đăng nhập thất bại!");
     }
   };
 
@@ -41,10 +53,10 @@ const Auth = ({ setIsLoggedIn, setRole }) => {
     });
     const data = await res.json();
     if (res.ok) {
-      alert("Tạo tài khoản thành công! Vui lòng đăng nhập.");
+      showSuccess("Tạo tài khoản thành công! Vui lòng đăng nhập.");
       setForm("login");
     } else {
-      alert(data.message);
+      showError(data.message || "Tạo tài khoản thất bại!");
     }
   };
 

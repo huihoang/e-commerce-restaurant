@@ -1,29 +1,118 @@
 // ==================== All Import
 import { useEffect, useMemo, useRef, useState } from "react";
 import { Link } from "react-router-dom";
+import axios from "axios";
 import { getCart, updateQuantity, clearCart, addToCart } from "@/utils/cart";
+import { useNotification } from "@/contexts/NotificationContext";
+import DropdownSelect from "@/components/common/DropdownSelect";
 
 const Cart = () => {
+  const { showError } = useNotification();
   const [items, setItems] = useState([]);
+  const [orderType, setOrderType] = useState("dine-in"); // "dine-in" hoặc "takeaway"
   const [customer, setCustomer] = useState({
     name: "",
     phone: "",
     email: "",
-    address: "",
+    // Thông tin cho "Ăn tại quán"
+    date: "",
+    time: "",
+    people: 1,
+    tableNumber: "",
+    // Thông tin cho "Mang đi"
+    deliveryAddress: "",
     note: "",
   });
-  const [fulfillment, setFulfillment] = useState("delivery");
   const [paymentMethod, setPaymentMethod] = useState("bank");
   const [related, setRelated] = useState([]);
+  const [bookings, setBookings] = useState([]); // Danh sách booking để check bàn đã đặt
   const sliderRef = useRef(null);
   const API_BASE_URL =
     import.meta.env.VITE_API_BASE_URL || "http://localhost:5000";
 
+  // ==================== Mock data: Danh sách bàn (có thể fetch từ API sau)
+  const allTables = useMemo(() => {
+    return Array.from({ length: 20 }, (_, i) => {
+      let capacity;
+      if (i < 5) {
+        capacity = 2;
+      } else if (i < 10) {
+        capacity = 4;
+      } else if (i < 15) {
+        capacity = 6;
+      } else {
+        capacity = 8;
+      }
+      return {
+        number: i + 1,
+        capacity,
+      };
+    });
+  }, []);
+
+  // ==================== Fetch bookings để check bàn đã đặt
+  useEffect(() => {
+    const fetchBookings = async () => {
+      try {
+        const res = await axios.get(`${API_BASE_URL}/api/bookings`);
+        setBookings(res.data || []);
+      } catch (err) {
+        console.error("❌ Lỗi khi lấy danh sách đặt bàn:", err.message);
+      }
+    };
+    fetchBookings();
+  }, [API_BASE_URL]);
+
+  // ==================== Lọc bàn còn trống dựa trên ngày, giờ và số người
+  const availableTables = useMemo(() => {
+    if (!customer.date || !customer.time || !customer.people) {
+      return allTables;
+    }
+
+    // Lọc các booking trùng ngày và giờ
+    const conflictingBookings = bookings.filter((booking) => {
+      if (booking.orderType !== "dine-in") return false;
+      const bookingDate = new Date(booking.date).toISOString().split("T")[0];
+      return bookingDate === customer.date && booking.time === customer.time;
+    });
+
+    // Lấy danh sách số bàn đã được đặt
+    const bookedTableNumbers = new Set(
+      conflictingBookings
+        .map((b) => b.tableNumber)
+        .filter(Boolean)
+        .map((num) => num.toString())
+    );
+
+    // Lọc bàn còn trống và phù hợp với số người
+    return allTables.filter(
+      (table) =>
+        !bookedTableNumbers.has(table.number.toString()) &&
+        table.capacity >= customer.people
+    );
+  }, [allTables, bookings, customer.date, customer.time, customer.people]);
+
+  // ==================== Tạo options cho DropdownSelect
+  const tableOptions = useMemo(() => {
+    if (availableTables.length === 0) {
+      return [
+        {
+          label: "Không có bàn trống",
+          value: "",
+        },
+      ];
+    }
+    return availableTables.map((table) => ({
+      label: `Bàn ${table.number} (${table.capacity} người)`,
+      value: table.number.toString(),
+    }));
+  }, [availableTables]);
+
   useEffect(() => {
     setItems(getCart());
     const handler = () => setItems(getCart());
-    window.addEventListener("cartUpdated", handler);
-    return () => window.removeEventListener("cartUpdated", handler);
+    globalThis.addEventListener("cartUpdated", handler);
+    return () => globalThis.removeEventListener("cartUpdated", handler);
   }, []);
 
   useEffect(() => {
@@ -32,7 +121,7 @@ const Cart = () => {
       .then((data) => {
         if (Array.isArray(data)) setRelated(data);
       })
-      .catch(() => { });
+      .catch(() => {});
   }, [API_BASE_URL]);
 
   const handlePrev = () => {
@@ -67,12 +156,14 @@ const Cart = () => {
       ),
     [items]
   );
-  const shippingEligible = fulfillment === "delivery" && items.length > 0;
+
+  const shippingEligible = orderType === "takeaway" && items.length > 0;
   const shippingFee = useMemo(() => {
     if (!shippingEligible) return 0;
     if (totalPrice >= 300000) return 0;
     return 30000;
   }, [shippingEligible, totalPrice]);
+
   const discountRate = paymentMethod === "bank" ? 0.05 : 0;
   const discountAmount = useMemo(
     () => totalPrice * discountRate,
@@ -89,6 +180,24 @@ const Cart = () => {
   };
 
   const handleOrder = () => {
+    // Validation
+    if (!customer.name || !customer.phone) {
+      showError("Vui lòng nhập đầy đủ thông tin khách hàng!");
+      return;
+    }
+
+    if (orderType === "dine-in") {
+      if (!customer.date || !customer.time || !customer.people || !customer.tableNumber) {
+        showError("Vui lòng điền đầy đủ thông tin đặt bàn!");
+        return;
+      }
+    } else {
+      if (!customer.deliveryAddress) {
+        showError("Vui lòng nhập địa chỉ nhận hàng!");
+        return;
+      }
+    }
+
     fetch(`${API_BASE_URL}/api/order/create_payment_url`, {
       method: "POST",
       headers: {
@@ -101,22 +210,20 @@ const Cart = () => {
         phone: customer.phone,
 
         // Thông tin ngày ăn / ngày giao hàng
-        date: new Date().toISOString().split("T")[0],
-        time: new Date().toTimeString().split(" ")[0].slice(0, 5),
+        date: customer.date || new Date().toISOString().split("T")[0],
+        time: customer.time || new Date().toTimeString().split(" ")[0].slice(0, 5),
 
         ship: {
-          isShip: fulfillment === "delivery",
-          address: customer.address,
+          isShip: orderType === "takeaway",
+          address: orderType === "takeaway" ? customer.deliveryAddress : "",
         },
 
-        people: 1,
+        people: orderType === "dine-in" ? customer.people : 1,
         note: customer.note,
-        selectedDishes: [
-          ...items.map((dish) => ({
-            dishId: dish._id,
-            quantity: dish.quantity || 1,
-          })),
-        ],
+        selectedDishes: items.map((dish) => ({
+          dishId: dish._id,
+          quantity: dish.quantity || 1,
+        })),
         payment: {
           paymentMethod: paymentMethod,
         },
@@ -152,16 +259,18 @@ const Cart = () => {
           // window.location.href = paymentUrl;
 
           //! cách hiển thị 2: Mở VNPAY trong popup
-          let paymentWindow = window.open(paymentUrl, '_blank');
+          let paymentWindow = globalThis.open(paymentUrl, "_blank");
 
           // Poll trạng thái đơn hàng mỗi 2s
           const interval = setInterval(async () => {
             // không cho tắt trừ khi hủy
             if (paymentWindow.closed) {
-              paymentWindow = window.open(paymentUrl, "_blank");
+              paymentWindow = globalThis.open(paymentUrl, "_blank");
             }
 
-            const res = await fetch(`${API_BASE_URL}/api/order/order_status/${payment.orderId}`).then(r => r.json());
+            const res = await fetch(
+              `${API_BASE_URL}/api/order/order_status/${payment.orderId}`
+            ).then((r) => r.json());
             if (res.data.payment.paidAt !== null) {
               console.log("payment status:", res.data.payment);
               clearInterval(interval);
@@ -169,14 +278,9 @@ const Cart = () => {
             }
           }, 2000);
 
-
           //todo chuyển trang hiển thị kết quả đặt món, biên lai
-
-
-
-
         } else {
-          alert("Không lấy được URL thanh toán: " + JSON.stringify(data));
+          showError("Không lấy được URL thanh toán!");
         }
 
         clearCart();
@@ -184,7 +288,9 @@ const Cart = () => {
       })
       .catch((err) => {
         console.error(err);
-        alert("Lỗi khi tạo thanh toán: " + (err?.message || err));
+        showError(
+          "Lỗi khi tạo thanh toán: " + (err?.message || "Vui lòng thử lại sau")
+        );
       });
   };
 
@@ -203,8 +309,12 @@ const Cart = () => {
                 <div className="w-[120px] h-[120px] rounded-full bg-blue-50 text-blue-600 flex items-center justify-center shadow-inner">
                   <span className="text-5xl">🛒</span>
                 </div>
-                <h4 className="mt-6 font-PlayfairD text-2xl text-slate-800">Giỏ hàng đang trống</h4>
-                <p className="mt-2 font-DM_sans text-slate-600">Khám phá thực đơn và thêm những món bạn yêu thích.</p>
+                <h4 className="mt-6 font-PlayfairD text-2xl text-slate-800">
+                  Giỏ hàng đang trống
+                </h4>
+                <p className="mt-2 font-DM_sans text-slate-600">
+                  Khám phá thực đơn và thêm những món bạn yêu thích.
+                </p>
                 <Link to="/menu" className="mt-6">
                   <button className="px-6 py-3 rounded-full bg-gradient-to-r from-blue-600 to-indigo-600 text-white font-bold hover:from-blue-700 hover:to-indigo-700 shadow-lg hover:shadow-xl transition-all duration-300">
                     Xem thực đơn
@@ -212,7 +322,10 @@ const Cart = () => {
                 </Link>
                 <div className="mt-8 grid grid-cols-2 sm:grid-cols-4 gap-3 w-full">
                   {["🍣", "🍜", "🥗", "🍰"].map((e, idx) => (
-                    <div key={idx} className="py-3 rounded-xl bg-white border border-slate-200 flex items-center justify-center text-2xl hover:shadow-md transition">
+                    <div
+                      key={idx}
+                      className="py-3 rounded-xl bg-white border border-slate-200 flex items-center justify-center text-2xl hover:shadow-md transition"
+                    >
                       {e}
                     </div>
                   ))}
@@ -236,9 +349,7 @@ const Cart = () => {
 
                     {/* Content column */}
                     <div className="flex-1">
-                      <h4 className="font-DM_sans font-bold text-lg">
-                        {i.name}
-                      </h4>
+                      <h4 className="font-DM_sans font-bold text-lg">{i.name}</h4>
                       <p className="text-blue-600 font-DM_sans font-bold">
                         {Number(i.price).toLocaleString("vi-VN")} đ
                       </p>
@@ -248,7 +359,9 @@ const Cart = () => {
                         <button
                           aria-label="Giảm số lượng"
                           className="w-10 h-10 rounded-lg border bg-white hover:bg-blue-50 text-slate-700 text-xl leading-none flex items-center justify-center"
-                          onClick={() => handleQty(i._id, Math.max(0, Number(i.quantity) - 1))}
+                          onClick={() =>
+                            handleQty(i._id, Math.max(0, Number(i.quantity) - 1))
+                          }
                         >
                           −
                         </button>
@@ -276,7 +389,9 @@ const Cart = () => {
                       <button
                         aria-label="Giảm số lượng"
                         className="w-10 h-10 rounded-lg border bg-white hover:bg-blue-50 text-slate-700 text-xl leading-none flex items-center justify-center"
-                        onClick={() => handleQty(i._id, Math.max(0, Number(i.quantity) - 1))}
+                        onClick={() =>
+                          handleQty(i._id, Math.max(0, Number(i.quantity) - 1))
+                        }
                       >
                         −
                       </button>
@@ -320,8 +435,9 @@ const Cart = () => {
               </h3>
 
               <div className="mt-6 space-y-4">
+                {/* Thông tin khách hàng cơ bản */}
                 <input
-                  placeholder="Họ tên"
+                  placeholder="Họ tên *"
                   className="w-full h-12 border-2 rounded-lg px-3"
                   value={customer.name}
                   onChange={(e) =>
@@ -329,7 +445,7 @@ const Cart = () => {
                   }
                 />
                 <input
-                  placeholder="Số điện thoại"
+                  placeholder="Số điện thoại *"
                   className="w-full h-12 border-2 rounded-lg px-3"
                   value={customer.phone}
                   onChange={(e) =>
@@ -344,14 +460,203 @@ const Cart = () => {
                     setCustomer((p) => ({ ...p, email: e.target.value }))
                   }
                 />
-                <input
-                  placeholder="Địa chỉ (nếu giao hàng)"
-                  className="w-full h-12 border-2 rounded-lg px-3"
-                  value={customer.address}
-                  onChange={(e) =>
-                    setCustomer((p) => ({ ...p, address: e.target.value }))
-                  }
-                />
+
+                {/* Chọn hình thức đặt món */}
+                <div className="p-4 border rounded-xl bg-slate-50">
+                  <p className="font-DM_sans font-semibold mb-3">
+                    🍽️ Hình thức đặt món
+                  </p>
+                  <div className="grid grid-cols-1 gap-3">
+                    <button
+                      type="button"
+                      onClick={() => setOrderType("dine-in")}
+                      className={`w-full h-14 px-6 py-3 rounded-xl border-2 font-semibold transition-all flex items-center justify-center ${
+                        orderType === "dine-in"
+                          ? "bg-gradient-to-r from-emerald-500 to-green-600 text-white border-emerald-600 shadow-lg"
+                          : "bg-white text-slate-700 border-slate-200 hover:border-emerald-300 hover:bg-emerald-50"
+                      }`}
+                    >
+                      🏠 Ăn tại quán
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setOrderType("takeaway")}
+                      className={`w-full h-14 px-6 py-3 rounded-xl border-2 font-semibold transition-all flex items-center justify-center ${
+                        orderType === "takeaway"
+                          ? "bg-gradient-to-r from-blue-500 to-indigo-600 text-white border-blue-600 shadow-lg"
+                          : "bg-white text-slate-700 border-slate-200 hover:border-blue-300 hover:bg-blue-50"
+                      }`}
+                    >
+                      📦 Mang đi
+                    </button>
+                  </div>
+                </div>
+
+                {/* Thông tin cho "Ăn tại quán" */}
+                {orderType === "dine-in" && (
+                  <div className="p-4 border rounded-xl bg-gradient-to-br from-emerald-50 to-green-50">
+                    <p className="font-DM_sans font-semibold mb-3">
+                      🏠 Thông tin đặt bàn
+                    </p>
+                    <div className="space-y-3">
+                      <div className="grid grid-cols-2 gap-3">
+                        <div>
+                          <label className="block text-xs font-semibold text-slate-700 mb-1">
+                            Ngày *
+                          </label>
+                          <div className="relative">
+                            <input
+                              type="date"
+                              className="w-full h-10 border-2 rounded-lg px-3 text-sm cursor-pointer"
+                              value={customer.date}
+                              onChange={(e) =>
+                                setCustomer((p) => ({ ...p, date: e.target.value }))
+                              }
+                              min={new Date().toISOString().split("T")[0]}
+                              onClick={(e) => e.target.showPicker?.()}
+                            />
+                          </div>
+                        </div>
+                        <div>
+                          <label className="block text-xs font-semibold text-slate-700 mb-1">
+                            Giờ *
+                          </label>
+                          <div className="relative">
+                            <input
+                              type="time"
+                              className="w-full h-10 border-2 rounded-lg px-3 text-sm cursor-pointer"
+                              value={customer.time}
+                              onChange={(e) =>
+                                setCustomer((p) => ({ ...p, time: e.target.value }))
+                              }
+                              onClick={(e) => e.target.showPicker?.()}
+                            />
+                          </div>
+                        </div>
+                      </div>
+                      <div>
+                        <label className="block text-xs font-semibold text-slate-700 mb-1">
+                          Số người *
+                        </label>
+                        <input
+                          type="number"
+                          min="1"
+                          placeholder="Số người"
+                          className="w-full h-10 border-2 rounded-lg px-3"
+                          value={customer.people}
+                          onChange={(e) =>
+                            setCustomer((p) => ({
+                              ...p,
+                              people: Number(e.target.value) || 1,
+                            }))
+                          }
+                        />
+                      </div>
+                      <div>
+                        <label className="block text-xs font-semibold text-slate-700 mb-1">
+                          Số bàn *
+                        </label>
+                        {customer.date && customer.time && customer.people ? (
+                          <>
+                            <DropdownSelect
+                              options={tableOptions}
+                              value={customer.tableNumber}
+                              onChange={(value) =>
+                                setCustomer((p) => ({ ...p, tableNumber: value }))
+                              }
+                              placeholder="Chọn bàn"
+                              className="w-full"
+                            />
+                            {availableTables.length > 0 && (
+                              <p className="mt-1 text-xs text-emerald-600">
+                                ✓ Có {availableTables.length} bàn trống phù hợp
+                              </p>
+                            )}
+                            {availableTables.length === 0 && (
+                              <p className="mt-1 text-xs text-red-500">
+                                ⚠ Không có bàn trống cho {customer.people} người vào
+                                thời điểm này
+                              </p>
+                            )}
+                          </>
+                        ) : (
+                          <div className="w-full h-10 border-2 rounded-lg px-3 bg-slate-50 text-slate-500 text-sm flex items-center">
+                            Vui lòng chọn ngày, giờ và số người trước
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+                )}
+
+                {/* Thông tin cho "Mang đi" */}
+                {orderType === "takeaway" && (
+                  <div className="p-4 border rounded-xl bg-gradient-to-br from-blue-50 to-indigo-50">
+                    <p className="font-DM_sans font-semibold mb-3">
+                      📦 Thông tin nhận hàng
+                    </p>
+                    <div className="space-y-3">
+                      <div className="grid grid-cols-2 gap-3">
+                        <div>
+                          <label className="block text-xs font-semibold text-slate-700 mb-1">
+                            Ngày giao *
+                          </label>
+                          <div className="relative">
+                            <input
+                              type="date"
+                              className="w-full h-10 border-2 rounded-lg px-3 text-sm cursor-pointer"
+                              value={customer.date}
+                              onChange={(e) =>
+                                setCustomer((p) => ({ ...p, date: e.target.value }))
+                              }
+                              min={new Date().toISOString().split("T")[0]}
+                              onClick={(e) => e.target.showPicker?.()}
+                            />
+                          </div>
+                        </div>
+                        <div>
+                          <label className="block text-xs font-semibold text-slate-700 mb-1">
+                            Giờ giao *
+                          </label>
+                          <div className="relative">
+                            <input
+                              type="time"
+                              className="w-full h-10 border-2 rounded-lg px-3 text-sm cursor-pointer"
+                              value={customer.time}
+                              onChange={(e) =>
+                                setCustomer((p) => ({ ...p, time: e.target.value }))
+                              }
+                              onClick={(e) => e.target.showPicker?.()}
+                            />
+                          </div>
+                        </div>
+                      </div>
+                      <div>
+                        <label className="block text-xs font-semibold text-slate-700 mb-1">
+                          Địa chỉ nhận hàng *
+                        </label>
+                        <input
+                          type="text"
+                          placeholder="Nhập địa chỉ nhận hàng"
+                          className="w-full h-10 border-2 rounded-lg px-3"
+                          value={customer.deliveryAddress}
+                          onChange={(e) =>
+                            setCustomer((p) => ({
+                              ...p,
+                              deliveryAddress: e.target.value,
+                            }))
+                          }
+                        />
+                      </div>
+                    </div>
+                    <p className="mt-3 text-xs text-slate-600">
+                      Đơn trên 300.000đ được freeship. Đơn dưới mức này sẽ cộng thêm
+                      30.000đ phí giao hàng.
+                    </p>
+                  </div>
+                )}
+
+                {/* Ghi chú */}
                 <textarea
                   placeholder="Ghi chú"
                   className="w-full h-24 border-2 rounded-lg px-3 py-2"
@@ -361,49 +666,18 @@ const Cart = () => {
                   }
                 />
 
-                <div className="p-4 border rounded-xl bg-slate-50">
-                  <p className="font-DM_sans font-semibold mb-2">
-                    Hình thức nhận món
-                  </p>
-                  <div className="flex flex-wrap gap-2">
-                    {[
-                      { id: "delivery", label: "Giao hàng tận nơi" },
-                      { id: "pickup", label: "Nhận tại quán" },
-                    ].map((option) => (
-                      <button
-                        key={option.id}
-                        type="button"
-                        onClick={() => setFulfillment(option.id)}
-                        className={`px-4 py-2 rounded-full border transition ${fulfillment === option.id
-                          ? "bg-blue-600 text-white border-blue-600"
-                          : "bg-white text-slate-700 border-slate-200 hover:border-blue-300"
-                          }`}
-                      >
-                        {option.label}
-                      </button>
-                    ))}
-                  </div>
-                  {fulfillment === "delivery" ? (
-                    <p className="mt-3 text-sm text-slate-600">
-                      Đơn trên 300.000đ được freeship. Đơn dưới mức này sẽ cộng thêm 30.000đ phí giao hàng.
-                    </p>
-                  ) : (
-                    <p className="mt-3 text-sm text-slate-600">
-                      Nhận tại quán không phát sinh phí giao hàng.
-                    </p>
-                  )}
-                </div>
-
+                {/* Phương thức thanh toán */}
                 <div className="p-4 border rounded-xl bg-white shadow-sm">
                   <p className="font-DM_sans font-semibold mb-3">
                     Phương thức thanh toán
                   </p>
                   <div className="flex flex-col gap-3">
                     <label
-                      className={`flex items-start gap-3 border rounded-xl p-3 cursor-pointer transition ${paymentMethod === "bank"
-                        ? "border-blue-500 bg-blue-50"
-                        : "border-slate-200 bg-white"
-                        }`}
+                      className={`flex items-start gap-3 border rounded-xl p-3 cursor-pointer transition ${
+                        paymentMethod === "bank"
+                          ? "border-blue-500 bg-blue-50"
+                          : "border-slate-200 bg-white"
+                      }`}
                     >
                       <input
                         type="radio"
@@ -415,17 +689,17 @@ const Cart = () => {
                       <div>
                         <p className="font-semibold">Chuyển khoản ngay</p>
                         <p className="text-sm text-slate-600">
-                          Giảm 5% trên tổng giá trị đơn hàng khi thanh toán
-                          trước.
+                          Giảm 5% trên tổng giá trị đơn hàng khi thanh toán trước.
                         </p>
                       </div>
                     </label>
 
                     <label
-                      className={`flex items-start gap-3 border rounded-xl p-3 cursor-pointer transition ${paymentMethod === "cash"
-                        ? "border-blue-500 bg-blue-50"
-                        : "border-slate-200 bg-white"
-                        }`}
+                      className={`flex items-start gap-3 border rounded-xl p-3 cursor-pointer transition ${
+                        paymentMethod === "cash"
+                          ? "border-blue-500 bg-blue-50"
+                          : "border-slate-200 bg-white"
+                      }`}
                     >
                       <input
                         type="radio"
@@ -437,14 +711,15 @@ const Cart = () => {
                       <div>
                         <p className="font-semibold">Tiền mặt khi nhận</p>
                         <p className="text-sm text-slate-600">
-                          Không áp dụng giảm giá. Đơn từ 500.000đ cần đặt cọc
-                          trước 30%.
+                          Không áp dụng giảm giá. Đơn từ 500.000đ cần đặt cọc trước
+                          30%.
                         </p>
                       </div>
                     </label>
                   </div>
                 </div>
 
+                {/* Tổng thanh toán */}
                 <div className="p-5 border rounded-2xl bg-slate-900 text-white space-y-2">
                   <div className="flex justify-between text-sm text-slate-200">
                     <span>Tạm tính</span>
@@ -492,9 +767,7 @@ const Cart = () => {
 
         {/* ================= Related items ================= */}
         <div className="mt-16">
-          <h3 className="font-PlayfairD font-medium text-2xl">
-            Gợi ý món ăn
-          </h3>
+          <h3 className="font-PlayfairD font-medium text-2xl">Gợi ý món ăn</h3>
           <div className="mt-6 relative">
             {/* Prev button */}
             {related.length > 1 && (
@@ -518,7 +791,11 @@ const Cart = () => {
                   className="related-card snap-start min-w-[240px] sm:min-w-[260px] lg:min-w-[280px] border-2 border-slate-200 rounded-xl overflow-hidden bg-white hover:border-blue-300 hover:shadow-xl transition"
                 >
                   <div className="w-full h-[160px] overflow-hidden">
-                    <img src={m.image} alt={m.name} className="w-full h-full object-cover" />
+                    <img
+                      src={m.image}
+                      alt={m.name}
+                      className="w-full h-full object-cover"
+                    />
                   </div>
                   <div className="p-4">
                     <h5 className="font-DM_sans font-bold text-base">{m.name}</h5>
@@ -554,5 +831,3 @@ const Cart = () => {
 };
 
 export default Cart;
-
-

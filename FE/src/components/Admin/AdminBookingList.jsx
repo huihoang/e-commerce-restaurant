@@ -1,20 +1,26 @@
 // ==================== All Import
-import React, { useEffect, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import axios from "axios";
 import AdminEditBookingModal from "./AdminEditBookingModal";
+import Pagination from "@/components/common/Pagination";
+import DropdownSelect from "@/components/common/DropdownSelect";
+import { useNotification } from "@/contexts/NotificationContext";
 
 // ==================== Component
 const AdminBookingList = () => {
+  const { showSuccess, showError } = useNotification();
   const [bookings, setBookings] = useState([]);
   const [loading, setLoading] = useState(true);
   const [currentPage, setCurrentPage] = useState(1);
   const [editingBooking, setEditingBooking] = useState(null);
-  const ITEMS_PER_PAGE = 5;
+  const [searchTerm, setSearchTerm] = useState("");
+  const [paymentFilter, setPaymentFilter] = useState("all");
+  const [sortBy, setSortBy] = useState("newest");
+  const ITEMS_PER_PAGE = 6;
   const API_BASE_URL =
     import.meta.env.VITE_API_BASE_URL || "http://localhost:5000";
 
-  useEffect(() => {
-    const fetchAllBookings = async () => {
+  const fetchAllBookings = useCallback(async () => {
       try {
         setLoading(true);
         const token = localStorage.getItem("token");
@@ -25,16 +31,16 @@ const AdminBookingList = () => {
           (a, b) => new Date(b.createdAt) - new Date(a.createdAt)
         );
         setBookings(sorted);
-        setCurrentPage(1);
       } catch (err) {
         console.error("❌ Lỗi khi lấy danh sách đặt bàn:", err.message);
       } finally {
         setLoading(false);
       }
-    };
+  }, [API_BASE_URL]);
 
+  useEffect(() => {
     fetchAllBookings();
-  }, []);
+  }, [fetchAllBookings]);
 
   const handleTogglePaidStatus = async (bookingId, currentStatus) => {
     try {
@@ -52,32 +58,41 @@ const AdminBookingList = () => {
           b._id === bookingId ? { ...b, isPaid: !currentStatus } : b
         )
       );
+      showSuccess(
+        !currentStatus
+          ? "Đã cập nhật trạng thái thanh toán thành công!"
+          : "Đã hủy trạng thái thanh toán!"
+      );
     } catch (err) {
       console.error("❌ Lỗi cập nhật trạng thái thanh toán:", err.message);
+      showError("Lỗi khi cập nhật trạng thái thanh toán!");
     }
   };
 
   const handleDeleteBooking = async (bookingId) => {
-    if (!window.confirm("Bạn có chắc chắn muốn xoá đơn đặt bàn này không?"))
+    if (
+      !globalThis.confirm("Bạn có chắc chắn muốn xoá đơn đặt bàn này không?")
+    )
       return;
     try {
       const token = localStorage.getItem("token");
       await axios.delete(`${API_BASE_URL}/api/admin/bookings/${bookingId}`, {
         headers: { Authorization: `Bearer ${token}` },
       });
+      showSuccess("Xóa đơn đặt bàn thành công!");
       setBookings((prev) => prev.filter((b) => b._id !== bookingId));
     } catch (err) {
       console.error("❌ Lỗi khi xoá đặt bàn:", err.message);
+      showError("Lỗi khi xóa đơn đặt bàn!");
     }
   };
 
-  // ==================== Cập nhật thông tin khi lưu thay đổi trong modal
   const handleSaveUpdatedBooking = (updatedBooking) => {
-    // Tính toán lại tổng tiền của booking sau khi sửa đổi món ăn hoặc số lượng
     const updatedBookingWithTotal = {
       ...updatedBooking,
       totalAmount: updatedBooking.selectedDishes.reduce(
-        (total, dishItem) => total + dishItem.dishId.price * dishItem.quantity,
+        (total, dishItem) =>
+          total + dishItem.dishId.price * dishItem.quantity,
         0
       ),
     };
@@ -85,17 +100,56 @@ const AdminBookingList = () => {
     setBookings((prev) =>
       prev.map(
         (b) =>
-          b._id === updatedBookingWithTotal._id ? updatedBookingWithTotal : b // Cập nhật chính xác thông tin đã chỉnh sửa
+          b._id === updatedBookingWithTotal._id
+            ? updatedBookingWithTotal
+            : b
       )
     );
-    setEditingBooking(null); // Đóng modal sau khi cập nhật
+    setEditingBooking(null);
   };
 
-  const totalPages = Math.max(1, Math.ceil(bookings.length / ITEMS_PER_PAGE));
-  const startIdx = (currentPage - 1) * ITEMS_PER_PAGE;
-  const displayedBookings = bookings.slice(startIdx, startIdx + ITEMS_PER_PAGE);
-  const pageStart = bookings.length === 0 ? 0 : startIdx + 1;
-  const pageEnd = Math.min(startIdx + displayedBookings.length, bookings.length);
+  const filteredAndSortedBookings = useMemo(() => {
+    let result = [...bookings];
+
+    // Filter by search term
+    if (searchTerm) {
+      result = result.filter(
+        (b) =>
+          b.name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+          b.phone?.includes(searchTerm) ||
+          b.email?.toLowerCase().includes(searchTerm.toLowerCase())
+      );
+    }
+
+    // Filter by payment status
+    if (paymentFilter !== "all") {
+      result = result.filter(
+        (b) => b.isPaid === (paymentFilter === "paid")
+      );
+    }
+
+    // Sort
+    if (sortBy === "newest") {
+      result.sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
+    } else if (sortBy === "oldest") {
+      result.sort((a, b) => new Date(a.createdAt) - new Date(b.createdAt));
+    } else if (sortBy === "amount-high") {
+      result.sort((a, b) => b.totalAmount - a.totalAmount);
+    } else if (sortBy === "amount-low") {
+      result.sort((a, b) => a.totalAmount - b.totalAmount);
+    }
+
+    return result;
+  }, [bookings, searchTerm, paymentFilter, sortBy]);
+
+  const totalPages = Math.max(
+    1,
+    Math.ceil(filteredAndSortedBookings.length / ITEMS_PER_PAGE)
+  );
+
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [searchTerm, paymentFilter, sortBy]);
 
   useEffect(() => {
     if (currentPage > totalPages) {
@@ -103,117 +157,228 @@ const AdminBookingList = () => {
     }
   }, [currentPage, totalPages]);
 
-  const getVisiblePages = () => {
-    const maxVisible = 5;
-    if (totalPages <= maxVisible) {
-      return Array.from({ length: totalPages }, (_, idx) => idx + 1);
-    }
+  const paginatedBookings = useMemo(() => {
+    const start = (currentPage - 1) * ITEMS_PER_PAGE;
+    return filteredAndSortedBookings.slice(start, start + ITEMS_PER_PAGE);
+  }, [filteredAndSortedBookings, currentPage]);
 
-    const pages = [1];
-    let start = Math.max(2, currentPage - 1);
-    let end = Math.min(totalPages - 1, currentPage + 1);
+  const stats = useMemo(() => {
+    const total = bookings.length;
+    const paid = bookings.filter((b) => b.isPaid).length;
+    const unpaid = total - paid;
+    const totalRevenue = bookings
+      .filter((b) => b.isPaid)
+      .reduce((sum, b) => sum + (b.totalAmount || 0), 0);
+    return { total, paid, unpaid, totalRevenue };
+  }, [bookings]);
 
-    if (start > 2) {
-      pages.push("left-ellipsis");
-    }
+  const paymentFilterOptions = [
+    { label: "Tất cả", value: "all" },
+    { label: "Đã thanh toán", value: "paid" },
+    { label: "Chưa thanh toán", value: "unpaid" },
+  ];
 
-    for (let i = start; i <= end; i += 1) {
-      pages.push(i);
-    }
-
-    if (end < totalPages - 1) {
-      pages.push("right-ellipsis");
-    }
-
-    pages.push(totalPages);
-    return pages;
-  };
-
-  const visiblePages = getVisiblePages();
+  const sortOptions = [
+    { label: "Mới nhất", value: "newest" },
+    { label: "Cũ nhất", value: "oldest" },
+    { label: "Giá cao → thấp", value: "amount-high" },
+    { label: "Giá thấp → cao", value: "amount-low" },
+  ];
 
   return (
-    <div className="max-w-6xl mx-auto p-6">
-      {loading ? (
-        <p className="text-center text-gray-500">Đang tải dữ liệu...</p>
-      ) : bookings.length === 0 ? (
-        <p className="text-center text-gray-500">Không có đơn đặt bàn nào.</p>
-      ) : (
-        displayedBookings.map((booking) => (
-          <div
-            key={booking._id}
-            className="relative bg-white rounded-lg shadow p-4 mb-4 border border-gray-200"
+    <div>
+      {/* ==================== Hero Stats Card ==================== */}
+      <div className="mb-6 rounded-3xl bg-gradient-to-br from-indigo-500 via-purple-500 to-pink-500 p-6 text-white shadow-xl">
+        <div className="mb-4 flex items-center justify-between">
+          <h2 className="text-2xl font-bold">📋 Quản Lý Đặt Bàn</h2>
+          <button
+            onClick={fetchAllBookings}
+            className="rounded-full bg-white/20 px-4 py-2 text-sm font-semibold backdrop-blur-sm transition hover:bg-white/30"
           >
-            {/* ==================== Nút chỉnh sửa + xoá (góc phải) */}
-            {!booking.isPaid && (
-              <div className="absolute top-2 right-2 flex gap-2">
-                <button
-                  onClick={() => setEditingBooking(booking)}
-                  className="bg-yellow-500 text-white py-2 px-4 rounded cursor-pointer hover:bg-yellow-600 mr-2"
-                >
-                  Chỉnh sửa
-                </button>
-                <button
-                  onClick={() => handleDeleteBooking(booking._id)}
-                  className="bg-red-500 text-white py-2 px-4 rounded cursor-pointer hover:bg-red-600"
-                >
-                  Xoá
-                </button>
-              </div>
-            )}
-
-            {/* ==================== Nội dung đặt bàn */}
-            <p className="text-gray-700">
-              👤 Người đặt: {booking.name || "Người dùng không rõ"}
+            🔄 Làm mới
+          </button>
+        </div>
+        <div className="grid grid-cols-2 gap-4 md:grid-cols-4">
+          <div className="rounded-2xl bg-white/20 p-4 backdrop-blur-sm">
+            <p className="text-sm opacity-90">Tổng đơn</p>
+            <p className="text-2xl font-bold">{stats.total}</p>
+          </div>
+          <div className="rounded-2xl bg-white/20 p-4 backdrop-blur-sm">
+            <p className="text-sm opacity-90">Đã thanh toán</p>
+            <p className="text-2xl font-bold text-green-200">{stats.paid}</p>
+          </div>
+          <div className="rounded-2xl bg-white/20 p-4 backdrop-blur-sm">
+            <p className="text-sm opacity-90">Chưa thanh toán</p>
+            <p className="text-2xl font-bold text-yellow-200">{stats.unpaid}</p>
+          </div>
+          <div className="rounded-2xl bg-white/20 p-4 backdrop-blur-sm">
+            <p className="text-sm opacity-90">Doanh thu</p>
+            <p className="text-2xl font-bold">
+              {stats.totalRevenue.toLocaleString("vi-VN")} đ
             </p>
-            <p className="text-gray-700">
+          </div>
+        </div>
+      </div>
+
+      {/* ==================== Search & Filters ==================== */}
+      <div className="mb-6 flex flex-col gap-4 md:flex-row md:items-center">
+        <div className="flex-1">
+          <input
+            type="text"
+            placeholder="🔍 Tìm kiếm theo tên, SĐT, email..."
+            value={searchTerm}
+            onChange={(e) => setSearchTerm(e.target.value)}
+            className="w-full rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm shadow-inner transition focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-200"
+          />
+        </div>
+        <div className="w-full md:w-48">
+          <DropdownSelect
+            options={paymentFilterOptions}
+            value={paymentFilter}
+            onChange={setPaymentFilter}
+            placeholder="Lọc thanh toán"
+            className="w-full"
+          />
+        </div>
+        <div className="w-full md:w-48">
+          <DropdownSelect
+            options={sortOptions}
+            value={sortBy}
+            onChange={setSortBy}
+            placeholder="Sắp xếp"
+            className="w-full"
+          />
+        </div>
+      </div>
+
+      {/* ==================== Booking Cards ==================== */}
+      {(() => {
+        if (loading) {
+          return (
+            <div className="rounded-2xl bg-white p-12 text-center shadow-sm">
+              <p className="text-slate-500">Đang tải dữ liệu...</p>
+            </div>
+          );
+        }
+        if (paginatedBookings.length === 0) {
+          const emptyMessage =
+            searchTerm || paymentFilter !== "all"
+              ? "Không tìm thấy đơn đặt bàn nào."
+              : "Chưa có đơn đặt bàn nào.";
+          return (
+            <div className="rounded-2xl bg-white p-12 text-center shadow-sm">
+              <p className="text-slate-500">{emptyMessage}</p>
+            </div>
+          );
+        }
+        return (
+        <div className="grid gap-4 md:grid-cols-2">
+          {paginatedBookings.map((booking) => (
+            <div
+              key={booking._id}
+              className="group relative rounded-2xl border border-slate-200 bg-white p-6 shadow-sm transition hover:shadow-lg"
+            >
+              {/* ==================== Status Badge ==================== */}
+              <div className="absolute right-4 top-4">
+                <span
+                  className={`rounded-full px-3 py-1 text-xs font-semibold ${
+                    booking.isPaid
+                      ? "bg-green-100 text-green-700"
+                      : "bg-red-100 text-red-700"
+                  }`}
+                >
+                  {booking.isPaid ? "✅ Đã thanh toán" : "❌ Chưa thanh toán"}
+                </span>
+              </div>
+
+              {/* ==================== Customer Info ==================== */}
+              <div className="mb-4 pr-20">
+                <h3 className="mb-2 text-lg font-bold text-slate-900">
+                  👤 {booking.name || "Khách hàng"}
+                </h3>
+                <div className="space-y-1 text-sm text-slate-600">
+                  <p>📞 {booking.phone || "N/A"}</p>
+                  {booking.email && <p>📧 {booking.email}</p>}
+                  <p>
               📅 {new Date(booking.date).toLocaleDateString("vi-VN")} - ⏰{" "}
               {booking.time}
             </p>
-            <p className="text-gray-700">📞 SĐT: {booking.phone}</p>
-            <p className="text-gray-700">👥 Số người: {booking.people}</p>
-            <p className="text-gray-700">📝 Ghi chú: {booking.note}</p>
+                  <p>👥 {booking.people} người</p>
+                  {booking.note && (
+                    <p className="mt-2 rounded-lg bg-slate-50 p-2 text-xs italic">
+                      📝 {booking.note}
+                    </p>
+                  )}
+                </div>
+              </div>
 
-            <p
-              className={`font-medium ${booking.isPaid ? "text-green-700" : "text-red-600"
-                }`}
-            >
-              {booking.isPaid ? "✅ Đã thanh toán" : "❌ Chưa thanh toán"}
-            </p>
-
-            <div className="mt-3 grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-3">
-              {booking.selectedDishes?.map((dishItem, index) => (
+              {/* ==================== Dishes Grid ==================== */}
+              {booking.selectedDishes && booking.selectedDishes.length > 0 && (
+                <div className="mb-4 rounded-xl bg-slate-50 p-3">
+                  <p className="mb-2 text-xs font-semibold text-slate-700">
+                    🍽️ Món đã chọn:
+                  </p>
+                  <div className="grid grid-cols-3 gap-2 sm:grid-cols-4">
+                    {booking.selectedDishes.map((dishItem, index) => (
                 <div
                   key={index}
-                  className="text-center p-2 border rounded bg-gray-50"
+                        className="flex flex-col items-center rounded-lg bg-white p-2 shadow-sm"
                 >
                   <img
                     src={
-                      dishItem.dishId?.image || "https://via.placeholder.com/80"
+                            dishItem.dishId?.image ||
+                            "https://via.placeholder.com/60"
                     }
                     alt={dishItem.dishId?.name || "Món ăn"}
-                    className="w-16 h-16 object-cover rounded-full mx-auto"
+                          className="mb-1 h-12 w-12 rounded-full object-cover"
                   />
-                  <p className="text-sm font-medium mt-1">
-                    {dishItem.dishId?.name}
+                        <p className="text-xs font-medium text-slate-700">
+                          {dishItem.dishId?.name || "N/A"}
                   </p>
-                  <p className="text-xs text-gray-500">
-                    SL: {dishItem.quantity}
+                        <p className="text-xs text-slate-500">
+                          x{dishItem.quantity}
                   </p>
                 </div>
               ))}
             </div>
+                </div>
+              )}
 
-            <p className="mt-4 font-semibold text-lg text-green-700">
-              💰 Tổng tiền: {booking.totalAmount.toLocaleString("vi-VN")} đ
-            </p>
+              {/* ==================== Total Amount ==================== */}
+              <div className="mb-4 flex items-center justify-between rounded-xl bg-gradient-to-r from-green-50 to-emerald-50 p-3">
+                <span className="text-sm font-semibold text-slate-700">
+                  💰 Tổng tiền:
+                </span>
+                <span className="text-lg font-bold text-green-700">
+                  {booking.totalAmount?.toLocaleString("vi-VN") || 0} đ
+                </span>
+              </div>
 
-            {/* ==================== Nút thanh toán */}
+              {/* ==================== Action Buttons ==================== */}
+              <div className="flex flex-wrap gap-2">
+                {!booking.isPaid && (
+                  <>
+                    <button
+                      onClick={() => setEditingBooking(booking)}
+                      className="flex-1 rounded-xl bg-amber-500 px-4 py-2 text-sm font-semibold text-white transition hover:bg-amber-600"
+                    >
+                      ✏️ Chỉnh sửa
+                    </button>
+                    <button
+                      onClick={() => handleDeleteBooking(booking._id)}
+                      className="rounded-xl bg-red-500 px-4 py-2 text-sm font-semibold text-white transition hover:bg-red-600"
+                    >
+                      🗑️ Xóa
+                    </button>
+                  </>
+                )}
             <button
               onClick={() =>
                 handleTogglePaidStatus(booking._id, booking.isPaid)
               }
-              className={`mt-3 px-4 py-2 rounded text-white ${booking.isPaid
-                ? "bg-gray-500 hover:bg-gray-600"
+                  className={`flex-1 rounded-xl px-4 py-2 text-sm font-semibold text-white transition ${
+                    booking.isPaid
+                      ? "bg-slate-500 hover:bg-slate-600"
                 : "bg-green-600 hover:bg-green-700"
                 }`}
             >
@@ -222,70 +387,28 @@ const AdminBookingList = () => {
                 : "✅ Đánh dấu đã thanh toán"}
             </button>
           </div>
-        ))
-      )}
-
-      {bookings.length > 0 && (
-        <div className="mt-10 flex flex-col items-center gap-4 rounded-2xl border border-slate-200 bg-white/80 px-6 py-5 shadow-sm backdrop-blur">
-          <div className="text-sm font-medium text-slate-600">
-            Hiển thị <span className="text-slate-900">{pageStart}</span>–
-            <span className="text-slate-900">{pageEnd}</span> /{" "}
-            <span className="font-semibold">{bookings.length}</span> đơn
-          </div>
-          <div className="flex flex-wrap items-center justify-center gap-2">
-            <button
-              onClick={() => setCurrentPage((prev) => Math.max(prev - 1, 1))}
-              className="flex items-center gap-2 rounded-full border border-slate-200 px-4 py-2 text-sm font-semibold text-slate-600 transition hover:border-amber-400 hover:text-amber-600 disabled:cursor-not-allowed disabled:border-slate-100 disabled:text-slate-300"
-              disabled={currentPage === 1}
-            >
-              ← Trước
-            </button>
-            <div className="flex items-center gap-1 rounded-full bg-slate-100/60 px-2 py-1">
-              {visiblePages.map((page, idx) =>
-                typeof page === "string" ? (
-                  <span
-                    key={`${page}-${idx}`}
-                    className="px-2 text-sm text-slate-400"
-                  >
-                    ...
-                  </span>
-                ) : (
-                  <button
-                    key={page}
-                    onClick={() => setCurrentPage(page)}
-                    className={`h-10 w-10 rounded-full text-sm font-semibold transition ${
-                      page === currentPage
-                        ? "bg-amber-500 text-white shadow-lg shadow-amber-200"
-                        : "text-slate-600 hover:bg-white hover:shadow-sm"
-                    }`}
-                  >
-                    {page}
-                  </button>
-                )
-              )}
             </div>
-            <button
-              onClick={() =>
-                setCurrentPage((prev) => Math.min(prev + 1, totalPages))
-              }
-              className="flex items-center gap-2 rounded-full border border-slate-200 px-4 py-2 text-sm font-semibold text-slate-600 transition hover:border-amber-400 hover:text-amber-600 disabled:cursor-not-allowed disabled:border-slate-100 disabled:text-slate-300"
-              disabled={currentPage === totalPages}
-            >
-              Sau →
-            </button>
-          </div>
-          <span className="text-xs uppercase tracking-[0.3em] text-slate-400">
-            Trang {currentPage} / {totalPages}
-          </span>
+          ))}
         </div>
+        );
+      })()}
+
+      {/* ==================== Pagination ==================== */}
+      {filteredAndSortedBookings.length > 0 && (
+        <Pagination
+          currentPage={currentPage}
+          totalPages={totalPages}
+          onPageChange={setCurrentPage}
+          className="mt-6"
+        />
       )}
 
-      {/* ==================== Modal chỉnh sửa */}
+      {/* ==================== Edit Modal ==================== */}
       {editingBooking && (
         <AdminEditBookingModal
           booking={editingBooking}
           onClose={() => setEditingBooking(null)}
-          onSave={handleSaveUpdatedBooking} // Truyền hàm cập nhật
+          onSave={handleSaveUpdatedBooking}
         />
       )}
     </div>

@@ -50,7 +50,7 @@ const HomeBlogs = () => {
       </div>
 
       {/* ================= Blog List ================= */}
-      <div className="mt-12 flex flex-col lg:grid lg:grid-cols-2 gap-8">
+      <div className="mt-12 flex flex-col lg:grid lg:grid-cols-2 gap-8 items-start">
         {/* -------- Left side: First blog item (50%) -------- */}
         {blogs.length > 0 && (
           <Link
@@ -80,12 +80,12 @@ const HomeBlogs = () => {
         )}
 
         {/* -------- Right side: 4 blog items (50%) -------- */}
-        <div className="flex flex-col lg:grid lg:grid-cols-2 gap-6">
+        <div className="flex flex-col lg:grid lg:grid-cols-2 gap-6 items-start">
           {blogs.slice(1, 5).map((item) => (
             <Link
               to={`/blog/${item._id}`}
               key={item._id}
-              className="rounded-xl border-2 border-slate-200 hover:border-blue-300 hover:shadow-xl transition-all duration-300 bg-white overflow-hidden"
+              className="rounded-xl border-2 border-slate-200 hover:border-blue-300 hover:shadow-xl transition-all duration-300 bg-white overflow-hidden self-start w-full"
             >
               <div className="h-[200px] w-full overflow-hidden rounded-t-xl">
                 <img

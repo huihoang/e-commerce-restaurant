@@ -1,14 +1,24 @@
-// EditBookingModal.js
-import React, { useState, useEffect } from "react";
+import { useEffect, useState } from "react";
 import axios from "axios";
+import { useNotification } from "@/contexts/NotificationContext";
+import ModalHeader from "./EditBookingModal/ModalHeader";
+import BasicInfoForm from "./EditBookingModal/BasicInfoForm";
+import DiscountCodeSection from "./EditBookingModal/DiscountCodeSection";
+import SelectedDishesList from "./EditBookingModal/SelectedDishesList";
+import MenuListSection from "./EditBookingModal/MenuListSection";
+import ModalActions from "./EditBookingModal/ModalActions";
 
 const EditBookingModal = ({ booking, onClose, onSave }) => {
+  const { showSuccess, showError } = useNotification();
   const [updatedBooking, setUpdatedBooking] = useState({
     ...booking,
     selectedDishes: booking.selectedDishes || [],
+    discount: booking.discount || 0,
+    discountCode: booking.discountCode || null,
   });
 
   const [menuList, setMenuList] = useState([]);
+  const [searchMenu, setSearchMenu] = useState("");
   const API_BASE_URL =
     import.meta.env.VITE_API_BASE_URL || "http://localhost:5000";
 
@@ -23,7 +33,7 @@ const EditBookingModal = ({ booking, onClose, onSave }) => {
     };
 
     fetchMenu();
-  }, []);
+  }, [API_BASE_URL]);
 
   const handleChange = (e) => {
     const { name, value } = e.target;
@@ -71,6 +81,22 @@ const EditBookingModal = ({ booking, onClose, onSave }) => {
     }));
   };
 
+  const handleSelectDiscount = (discountCode) => {
+    setUpdatedBooking((prev) => ({
+      ...prev,
+      discountCode: discountCode.code,
+      discount: discountCode.discount,
+    }));
+  };
+
+  const handleRemoveDiscount = () => {
+    setUpdatedBooking((prev) => ({
+      ...prev,
+      discountCode: null,
+      discount: 0,
+    }));
+  };
+
   const handleSave = async () => {
     try {
       const token = localStorage.getItem("token");
@@ -83,135 +109,61 @@ const EditBookingModal = ({ booking, onClose, onSave }) => {
           },
         }
       );
+      showSuccess("Cập nhật đặt món thành công!");
       onSave(updatedBooking);
     } catch (err) {
-      console.error("❌ Lỗi khi cập nhật đặt bàn:", err.message);
+      console.error("❌ Lỗi khi cập nhật đặt món:", err.message);
+      showError("Lỗi khi cập nhật đặt món. Vui lòng thử lại!");
     }
   };
 
+  const calculateTotal = () => {
+    const subtotal = updatedBooking.selectedDishes.reduce(
+      (total, dish) =>
+        total + (dish.dishId?.price || 0) * (dish.quantity || 0),
+      0
+    );
+    const discountAmount = (subtotal * (updatedBooking.discount || 0)) / 100;
+    return {
+      subtotal,
+      discountAmount,
+      total: subtotal - discountAmount,
+    };
+  };
+
+  const totalAmounts = calculateTotal();
+
   return (
-    <div className="fixed inset-0 bg-gray-500 bg-opacity-75 flex items-center justify-center z-50">
-      <div className="bg-white p-6 rounded-lg max-w-lg w-full overflow-y-auto max-h-[90vh]">
-        <h3 className="text-xl font-semibold mb-4">Chỉnh sửa Đặt Bàn</h3>
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm p-4">
+      <div className="w-full max-w-4xl max-h-[90vh] flex flex-col rounded-3xl bg-white shadow-2xl">
+        <ModalHeader onClose={onClose} />
 
-        <div className="mb-4">
-          <label className="block">Ngày</label>
-          <input
-            type="date"
-            name="date"
-            value={
-              updatedBooking.date
-                ? new Date(updatedBooking.date).toISOString().split("T")[0]
-                : ""
-            }
-            onChange={handleChange}
-            className="w-full p-2 border border-gray-300 rounded"
+        <div className="p-6 overflow-y-auto flex-1 [&::-webkit-scrollbar]:w-2 [&::-webkit-scrollbar-track]:bg-transparent [&::-webkit-scrollbar-thumb]:bg-slate-300 [&::-webkit-scrollbar-thumb]:rounded-full [&::-webkit-scrollbar-thumb]:hover:bg-slate-400">
+          <BasicInfoForm booking={updatedBooking} onChange={handleChange} />
+
+          <DiscountCodeSection
+            booking={updatedBooking}
+            onSelectDiscount={handleSelectDiscount}
+            onRemoveDiscount={handleRemoveDiscount}
           />
-        </div>
 
-        <div className="mb-4">
-          <label className="block">Thời gian</label>
-          <input
-            type="time"
-            name="time"
-            value={updatedBooking.time}
-            onChange={handleChange}
-            className="w-full p-2 border border-gray-300 rounded"
+          <SelectedDishesList
+            selectedDishes={updatedBooking.selectedDishes}
+            totalAmounts={totalAmounts}
+            discount={updatedBooking.discount}
+            onQuantityChange={handleQuantityChange}
+            onRemoveDish={handleRemoveDish}
           />
-        </div>
 
-        <div className="mb-4">
-          <label className="block">Số người</label>
-          <input
-            type="number"
-            name="people"
-            value={updatedBooking.people}
-            onChange={handleChange}
-            className="w-full p-2 border border-gray-300 rounded"
+          <MenuListSection
+            menuList={menuList}
+            searchMenu={searchMenu}
+            onSearchChange={setSearchMenu}
+            selectedDishes={updatedBooking.selectedDishes}
+            onAddDish={handleAddDish}
           />
-        </div>
 
-        <div className="mb-4">
-          <label className="block">Ghi chú</label>
-          <textarea
-            name="note"
-            value={updatedBooking.note}
-            onChange={handleChange}
-            className="w-full p-2 border border-gray-300 rounded"
-          ></textarea>
-        </div>
-
-        <div className="mb-4">
-          <h4 className="font-semibold text-lg mb-2">🍽️ Món ăn đã chọn:</h4>
-          {(updatedBooking.selectedDishes || []).map((dishObj) => (
-            <div
-              key={dishObj.dishId._id}
-              className="flex items-center justify-between mb-2"
-            >
-              <div className="flex items-center">
-                <img
-                  src={
-                    dishObj.dishId.image || "https://via.placeholder.com/100"
-                  }
-                  alt={dishObj.dishId.name}
-                  className="w-16 h-16 object-cover rounded-full mr-2"
-                />
-                <div>
-                  <p className="font-medium">{dishObj.dishId.name}</p>
-                  <input
-                    type="number"
-                    min="1"
-                    value={dishObj.quantity}
-                    onChange={(e) =>
-                      handleQuantityChange(dishObj.dishId._id, e.target.value)
-                    }
-                    className="w-20 mt-1 p-1 border border-gray-300 rounded text-sm"
-                  />
-                </div>
-              </div>
-              <span
-                onClick={() => handleRemoveDish(dishObj.dishId._id)}
-                className="text-red-500 hover:text-red-700 cursor-pointer"
-              >
-                Xóa
-              </span>
-            </div>
-          ))}
-        </div>
-
-        <div className="mt-6">
-          <h4 className="font-semibold text-lg mb-2">🧾 Danh sách món ăn:</h4>
-          <div className="grid grid-cols-2 sm:grid-cols-3 gap-4 max-h-[300px] overflow-y-auto">
-            {menuList.map((dish) => (
-              <div
-                key={dish._id}
-                className="cursor-pointer border rounded-lg p-2 hover:bg-gray-100 transition flex flex-col items-center"
-                onClick={() => handleAddDish(dish)}
-              >
-                <img
-                  src={dish.image || "https://via.placeholder.com/100"}
-                  alt={dish.name}
-                  className="w-20 h-20 object-cover rounded-full mb-2"
-                />
-                <p className="text-sm font-medium text-center">{dish.name}</p>
-              </div>
-            ))}
-          </div>
-        </div>
-
-        <div className="flex justify-between mt-6">
-          <span
-            onClick={onClose}
-            className="bg-gray-500 text-white py-2 px-4 rounded cursor-pointer"
-          >
-            Đóng
-          </span>
-          <span
-            onClick={handleSave}
-            className="bg-green-500 text-white py-2 px-4 rounded cursor-pointer"
-          >
-            Lưu thay đổi
-          </span>
+          <ModalActions onClose={onClose} onSave={handleSave} />
         </div>
       </div>
     </div>

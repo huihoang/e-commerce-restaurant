@@ -1,13 +1,16 @@
-import React, { useState, useEffect } from "react";
+import { useEffect, useState } from "react";
 import axios from "axios";
+import { useNotification } from "@/contexts/NotificationContext";
 
-const EditBookingModal = ({ booking, onClose, onSave }) => {
+const AdminEditBookingModal = ({ booking, onClose, onSave }) => {
+  const { showSuccess, showError } = useNotification();
   const [updatedBooking, setUpdatedBooking] = useState({
     ...booking,
     selectedDishes: booking.selectedDishes || [],
   });
 
   const [menuList, setMenuList] = useState([]);
+  const [searchMenu, setSearchMenu] = useState("");
   const API_BASE_URL =
     import.meta.env.VITE_API_BASE_URL || "http://localhost:5000";
 
@@ -22,7 +25,7 @@ const EditBookingModal = ({ booking, onClose, onSave }) => {
     };
 
     fetchMenu();
-  }, []);
+  }, [API_BASE_URL]);
 
   const handleChange = (e) => {
     const { name, value } = e.target;
@@ -95,144 +98,270 @@ const EditBookingModal = ({ booking, onClose, onSave }) => {
         }
       );
 
+      showSuccess("Cập nhật đặt bàn thành công!");
       onSave(updatedBooking);
     } catch (err) {
       console.error("❌ Lỗi khi cập nhật đặt bàn:", err.message);
+      showError("Lỗi khi cập nhật đặt bàn. Vui lòng thử lại!");
     }
   };
 
+  const filteredMenu = menuList.filter((dish) =>
+    dish.name.toLowerCase().includes(searchMenu.toLowerCase())
+  );
+
+  const calculateTotal = () => {
+    return updatedBooking.selectedDishes.reduce(
+      (total, dish) =>
+        total + (dish.dishId?.price || 0) * (dish.quantity || 0),
+      0
+    );
+  };
+
   return (
-    <div className="fixed inset-0 bg-gray-500 bg-opacity-75 flex items-center justify-center z-50">
-      <div className="bg-white p-6 rounded-lg max-w-lg w-full overflow-y-auto max-h-[90vh]">
-        <h3 className="text-xl font-semibold mb-4">Chỉnh sửa Đặt Bàn</h3>
-
-        <div className="mb-4">
-          <label className="block">Ngày</label>
-          <input
-            type="date"
-            name="date"
-            value={
-              updatedBooking.date
-                ? new Date(updatedBooking.date).toISOString().split("T")[0]
-                : ""
-            }
-            onChange={handleChange}
-            className="w-full p-2 border border-gray-300 rounded"
-          />
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm p-4">
+      <div className="w-full max-w-4xl max-h-[90vh] flex flex-col rounded-3xl bg-white shadow-2xl">
+        {/* Header */}
+        <div className="flex items-center justify-between border-b border-slate-200 bg-gradient-to-r from-blue-500 to-indigo-600 px-6 py-4 rounded-t-3xl">
+          <h3 className="text-2xl font-bold text-white">✏️ Chỉnh sửa Đặt Bàn</h3>
+          <button
+            onClick={onClose}
+            className="rounded-full bg-white/20 p-2 text-white transition hover:bg-white/30"
+            aria-label="Đóng"
+          >
+            ✕
+          </button>
         </div>
 
-        <div className="mb-4">
-          <label className="block">Thời gian</label>
-          <input
-            type="time"
-            name="time"
-            value={updatedBooking.time}
-            onChange={handleChange}
-            className="w-full p-2 border border-gray-300 rounded"
-          />
-        </div>
-
-        <div className="mb-4">
-          <label className="block">Số người</label>
-          <input
-            type="number"
-            name="people"
-            value={updatedBooking.people}
-            onChange={handleChange}
-            className="w-full p-2 border border-gray-300 rounded"
-          />
-        </div>
-
-        <div className="mb-4">
-          <label className="block">Ghi chú</label>
-          <textarea
-            name="note"
-            value={updatedBooking.note}
-            onChange={handleChange}
-            className="w-full p-2 border border-gray-300 rounded"
-          ></textarea>
-        </div>
-
-        <div className="mb-4">
-          <h4 className="font-semibold text-lg mb-2">🍽️ Món ăn đã chọn:</h4>
-          {(updatedBooking.selectedDishes || []).map((dishObj) => (
-            <div
-              key={dishObj.dishId._id || dishObj.dishId}
-              className="flex items-center justify-between mb-2"
-            >
-              <div className="flex items-center">
-                <img
-                  src={
-                    dishObj.dishId.image || "https://via.placeholder.com/100"
-                  }
-                  alt={dishObj.dishId.name}
-                  className="w-16 h-16 object-cover rounded-full mr-2"
-                />
-                <div>
-                  <p className="font-medium">{dishObj.dishId.name}</p>
-                  <input
-                    type="number"
-                    min="1"
-                    value={dishObj.quantity}
-                    onChange={(e) =>
-                      handleQuantityChange(
-                        dishObj.dishId._id || dishObj.dishId,
-                        e.target.value
-                      )
-                    }
-                    className="w-20 mt-1 p-1 border border-gray-300 rounded text-sm"
-                  />
-                </div>
-              </div>
-              <span
-                onClick={() =>
-                  handleRemoveDish(dishObj.dishId._id || dishObj.dishId)
+        <div className="p-6 overflow-y-auto flex-1 [&::-webkit-scrollbar]:w-2 [&::-webkit-scrollbar-track]:bg-transparent [&::-webkit-scrollbar-thumb]:bg-slate-300 [&::-webkit-scrollbar-thumb]:rounded-full [&::-webkit-scrollbar-thumb]:hover:bg-slate-400">
+          {/* Basic Info Section */}
+          <div className="mb-6 grid gap-4 md:grid-cols-2">
+            <div>
+              <label className="mb-2 block text-sm font-semibold text-slate-700">
+                📅 Ngày
+              </label>
+              <input
+                type="date"
+                name="date"
+                value={
+                  updatedBooking.date
+                    ? new Date(updatedBooking.date).toISOString().split("T")[0]
+                    : ""
                 }
-                className="text-red-500 hover:text-red-700 cursor-pointer"
-              >
-                Xóa
+                onChange={handleChange}
+                className="w-full rounded-xl border border-slate-200 bg-white px-4 py-3 text-sm shadow-inner transition focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-200"
+              />
+            </div>
+
+            <div>
+              <label className="mb-2 block text-sm font-semibold text-slate-700">
+                ⏰ Thời gian
+              </label>
+              <input
+                type="time"
+                name="time"
+                value={updatedBooking.time}
+                onChange={handleChange}
+                className="w-full rounded-xl border border-slate-200 bg-white px-4 py-3 text-sm shadow-inner transition focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-200"
+              />
+            </div>
+
+            <div>
+              <label className="mb-2 block text-sm font-semibold text-slate-700">
+                👥 Số người
+              </label>
+              <input
+                type="number"
+                name="people"
+                min="1"
+                value={updatedBooking.people}
+                onChange={handleChange}
+                className="w-full rounded-xl border border-slate-200 bg-white px-4 py-3 text-sm shadow-inner transition focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-200"
+              />
+            </div>
+
+            <div>
+              <label className="mb-2 block text-sm font-semibold text-slate-700">
+                📝 Ghi chú
+              </label>
+              <textarea
+                name="note"
+                value={updatedBooking.note || ""}
+                onChange={handleChange}
+                rows={3}
+                className="w-full rounded-xl border border-slate-200 bg-white px-4 py-3 text-sm shadow-inner transition focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-200"
+                placeholder="Nhập ghi chú (nếu có)..."
+              />
+            </div>
+          </div>
+
+          {/* Selected Dishes Section */}
+          <div className="mb-6 rounded-2xl border border-slate-200 bg-slate-50 p-4">
+            <h4 className="mb-4 text-lg font-bold text-slate-900">
+              🍽️ Món ăn đã chọn ({updatedBooking.selectedDishes.length})
+            </h4>
+            {updatedBooking.selectedDishes.length === 0 ? (
+              <p className="text-center text-sm text-slate-500">
+                Chưa có món nào được chọn
+              </p>
+            ) : (
+              <div className="space-y-3">
+                {updatedBooking.selectedDishes.map((dishObj) => {
+                  const dishId = dishObj.dishId._id || dishObj.dishId;
+                  const dish = dishObj.dishId;
+                  return (
+                    <div
+                      key={dishId}
+                      className="flex items-center justify-between rounded-xl bg-white p-3 shadow-sm"
+                    >
+                      <div className="flex items-center gap-3">
+                        <img
+                          src={dish.image || "https://via.placeholder.com/60"}
+                          alt={dish.name}
+                          className="h-14 w-14 rounded-full object-cover"
+                        />
+                        <div>
+                          <p className="font-semibold text-slate-900">
+                            {dish.name}
+                          </p>
+                          <p className="text-sm text-slate-600">
+                            {dish.price?.toLocaleString("vi-VN")} đ
+                          </p>
+                        </div>
+                      </div>
+                      <div className="flex items-center gap-3">
+                        <div className="flex items-center gap-2">
+                          <button
+                            type="button"
+                            onClick={() =>
+                              handleQuantityChange(
+                                dishId,
+                                Math.max(1, dishObj.quantity - 1)
+                              )
+                            }
+                            className="h-8 w-8 rounded-lg bg-slate-100 text-slate-700 transition hover:bg-slate-200"
+                          >
+                            −
+                          </button>
+                          <input
+                            type="number"
+                            min="1"
+                            value={dishObj.quantity}
+                            onChange={(e) =>
+                              handleQuantityChange(dishId, e.target.value)
+                            }
+                            className="h-8 w-16 rounded-lg border border-slate-200 text-center text-sm font-semibold"
+                          />
+                          <button
+                            type="button"
+                            onClick={() =>
+                              handleQuantityChange(
+                                dishId,
+                                dishObj.quantity + 1
+                              )
+                            }
+                            className="h-8 w-8 rounded-lg bg-slate-100 text-slate-700 transition hover:bg-slate-200"
+                          >
+                            +
+                          </button>
+                        </div>
+                        <button
+                          type="button"
+                          onClick={() => handleRemoveDish(dishId)}
+                          className="rounded-lg bg-red-100 px-3 py-1.5 text-sm font-semibold text-red-600 transition hover:bg-red-200"
+                        >
+                          🗑️ Xóa
+                        </button>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            )}
+            <div className="mt-4 flex items-center justify-between rounded-xl bg-gradient-to-r from-green-50 to-emerald-50 px-4 py-3">
+              <span className="font-bold text-slate-700">💰 Tổng tiền:</span>
+              <span className="text-xl font-bold text-green-700">
+                {calculateTotal().toLocaleString("vi-VN")} đ
               </span>
             </div>
-          ))}
-        </div>
-
-        <div className="mt-6">
-          <h4 className="font-semibold text-lg mb-2">🧾 Danh sách món ăn:</h4>
-          <div className="grid grid-cols-2 sm:grid-cols-3 gap-4 max-h-[300px] overflow-y-auto">
-            {menuList.map((dish) => (
-              <div
-                key={dish._id}
-                className="cursor-pointer border rounded-lg p-2 hover:bg-gray-100 transition flex flex-col items-center"
-                onClick={() => handleAddDish(dish)}
-              >
-                <img
-                  src={dish.image || "https://via.placeholder.com/100"}
-                  alt={dish.name}
-                  className="w-20 h-20 object-cover rounded-full mb-2"
-                />
-                <p className="text-sm font-medium text-center">{dish.name}</p>
-              </div>
-            ))}
           </div>
-        </div>
 
-        <div className="flex justify-between mt-6">
-          <span
-            onClick={onClose}
-            className="bg-gray-500 text-white py-2 px-4 rounded cursor-pointer"
-          >
-            Đóng
-          </span>
-          <span
-            onClick={handleSave}
-            className="bg-green-500 text-white py-2 px-4 rounded cursor-pointer"
-          >
-            Lưu thay đổi
-          </span>
+          {/* Menu List Section */}
+          <div className="rounded-2xl border border-slate-200 bg-slate-50 p-4">
+            <div className="mb-4 flex items-center justify-between">
+              <h4 className="text-lg font-bold text-slate-900">
+                🧾 Danh sách món ăn
+              </h4>
+              <input
+                type="text"
+                placeholder="🔍 Tìm món..."
+                value={searchMenu}
+                onChange={(e) => setSearchMenu(e.target.value)}
+                className="w-48 rounded-xl border border-slate-200 bg-white px-4 py-2 text-sm shadow-inner transition focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-200"
+              />
+            </div>
+            <div className="max-h-[300px] overflow-y-auto">
+              <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 md:grid-cols-4">
+                {filteredMenu.map((dish) => {
+                  const isAdded = updatedBooking.selectedDishes.some(
+                    (d) => (d.dishId._id || d.dishId) === dish._id
+                  );
+                  return (
+                    <button
+                      key={dish._id}
+                      type="button"
+                      onClick={() => !isAdded && handleAddDish(dish)}
+                      disabled={isAdded}
+                      className={`flex flex-col items-center rounded-xl border-2 p-3 transition ${
+                        isAdded
+                          ? "border-green-300 bg-green-50 opacity-60"
+                          : "border-slate-200 bg-white hover:border-blue-300 hover:shadow-md"
+                      }`}
+                    >
+                      <img
+                        src={dish.image || "https://via.placeholder.com/80"}
+                        alt={dish.name}
+                        className="mb-2 h-16 w-16 rounded-full object-cover"
+                      />
+                      <p className="text-xs font-semibold text-slate-900">
+                        {dish.name}
+                      </p>
+                      <p className="mt-1 text-xs text-slate-600">
+                        {dish.price?.toLocaleString("vi-VN")} đ
+                      </p>
+                      {isAdded && (
+                        <span className="mt-1 text-xs font-semibold text-green-600">
+                          ✓ Đã thêm
+                        </span>
+                      )}
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+          </div>
+
+          {/* Action Buttons */}
+          <div className="mt-6 flex justify-end gap-3">
+            <button
+              type="button"
+              onClick={onClose}
+              className="rounded-xl border border-slate-200 bg-white px-6 py-3 text-sm font-semibold text-slate-700 transition hover:bg-slate-50"
+            >
+              Hủy bỏ
+            </button>
+            <button
+              type="button"
+              onClick={handleSave}
+              className="rounded-xl bg-gradient-to-r from-blue-600 to-indigo-600 px-6 py-3 text-sm font-semibold text-white shadow-lg transition hover:from-blue-700 hover:to-indigo-700 hover:shadow-xl"
+            >
+              💾 Lưu thay đổi
+            </button>
+          </div>
         </div>
       </div>
     </div>
   );
 };
 
-export default EditBookingModal;
+export default AdminEditBookingModal;

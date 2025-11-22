@@ -13,9 +13,9 @@ const Footer = () => {
                         {/* ================= Footer Info & Logo Part ================= */}
                         <div className='flex flex-col gap-6 text-white'>
                             {/* ------- Footer Logo ------- */}
-                            <Link to='/' className='flex items-center'>
-                                <img src="/footerLogo.png" alt="footer_logo_Image" />
-                                <h3 className='ml-3 font-PlayfairD font-semibold text-[33px] italic leading-normal'>BK Restaurant</h3>
+                            <Link to='/' className='flex items-center gap-3'>
+                                <img src="/Logo.png" width={55} height={55} alt="Logo_image" />
+                                <h3 className='font-PlayfairD font-semibold text-3xl sm:text-[33px] italic leading-normal text-slate-100'>BK Restaurant</h3>
                             </Link>
 
                             {/* ------- Footer Info ------- */}
