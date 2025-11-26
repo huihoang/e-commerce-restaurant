@@ -11,7 +11,9 @@ const DropdownSelect = (props) => {
   } = props;
 
   const [open, setOpen] = useState(false);
+  const [dropUp, setDropUp] = useState(false);
   const containerRef = useRef(null);
+  const menuRef = useRef(null);
 
   useEffect(() => {
     const handleClickOutside = (event) => {
@@ -22,6 +24,20 @@ const DropdownSelect = (props) => {
     document.addEventListener("mousedown", handleClickOutside);
     return () => document.removeEventListener("mousedown", handleClickOutside);
   }, []);
+
+  useEffect(() => {
+    if (open && containerRef.current && menuRef.current) {
+      const containerRect = containerRef.current.getBoundingClientRect();
+      const menuRect = menuRef.current.getBoundingClientRect();
+      const spaceBelow = window.innerHeight - containerRect.bottom;
+      const spaceAbove = containerRect.top;
+      if (spaceBelow < menuRect.height && spaceAbove > spaceBelow) {
+        setDropUp(true);
+      } else {
+        setDropUp(false);
+      }
+    }
+  }, [open, options.length]);
 
   const selected = options.find((opt) => opt.value === value);
 
@@ -42,7 +58,12 @@ const DropdownSelect = (props) => {
         </span>
       </button>
       {open && (
-        <div className="absolute z-20 mt-2 w-full rounded-2xl border border-slate-100 bg-white shadow-xl shadow-slate-200/80">
+        <div
+          ref={menuRef}
+          className={`absolute z-20 w-full max-h-60 overflow-y-auto rounded-2xl border border-slate-100 bg-white shadow-xl shadow-slate-200/80 ${
+            dropUp ? "bottom-full mb-2" : "top-full mt-2"
+          }`}
+        >
           {options.map((opt) => {
             const isSelected = opt.value === value;
             return (

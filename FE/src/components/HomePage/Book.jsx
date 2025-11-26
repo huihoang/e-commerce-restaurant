@@ -1,5 +1,5 @@
 // ==================== All Import
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import axios from "axios";
 import { useNotification } from "@/contexts/NotificationContext";
 import DropdownSelect from "@/components/common/DropdownSelect";
@@ -20,37 +20,56 @@ const Book = () => {
   const [selectedDishes, setSelectedDishes] = useState([]);
   const [paymentMethod, setPaymentMethod] = useState("bank"); // "bank" hoặc "cash" (chỉ khi có món)
   const [bookings, setBookings] = useState([]); // Danh sách booking để check bàn đã đặt
+  const [tables, setTables] = useState([]);
   const API_BASE_URL =
     import.meta.env.VITE_API_BASE_URL || "http://localhost:5000";
 
-  // ==================== Mock data: Danh sách bàn (có thể fetch từ API sau)
-  const allTables = useMemo(() => {
-    return Array.from({ length: 20 }, (_, i) => {
-      let capacity;
-      if (i < 5) {
-        capacity = 2;
-      } else if (i < 10) {
-        capacity = 4;
-      } else if (i < 15) {
-        capacity = 6;
+  const normalizeBooking = (booking) => ({
+    ...booking,
+    orderType: booking.orderType || (booking.ship?.isShip ? "takeaway" : "dine-in"),
+  });
+
+  const isTableBusy = useCallback(
+    (table, dateValue, timeValue) => {
+      if (!dateValue || !timeValue || !table) return true;
+      const dateKey = dateValue.split("T")[0];
+      return bookings.some((booking) => {
+        const bookingOrderType =
+          booking.orderType || (booking.ship?.isShip ? "takeaway" : "dine-in");
+        if (bookingOrderType !== "dine-in") return false;
+        const bookingDate = (booking.date || "").split("T")[0];
+        if (bookingDate !== dateKey) return false;
+        // Check by tableNumber
+        if (booking.tableNumber && table.number) {
+          if (booking.tableNumber.toString() !== table.number.toString()) {
+            return false;
+          }
       } else {
-        capacity = 8;
-      }
-      return {
-        number: i + 1,
-        capacity,
-      };
+          return false;
+        }
+        // Bàn bận nếu: chưa thanh toán HOẶC cùng khung giờ
+        const isPending = !(booking.payment?.isPaid);
+        const sameSlot = booking.time === timeValue;
+        return isPending || sameSlot;
     });
-  }, []);
+    },
+    [bookings]
+  );
 
   // ==================== Fetch bookings để check bàn đã đặt
   useEffect(() => {
     const fetchBookings = async () => {
       try {
-        const res = await axios.get(`${API_BASE_URL}/api/bookings`);
-        setBookings(res.data || []);
+        const token = localStorage.getItem("token");
+        const headers = token ? { Authorization: `Bearer ${token}` } : {};
+        const res = await axios.get(`${API_BASE_URL}/api/bookings`, { headers });
+        const data = Array.isArray(res.data)
+          ? res.data.map(normalizeBooking)
+          : [];
+        setBookings(data);
       } catch (err) {
         console.error("❌ Lỗi khi lấy danh sách đặt bàn:", err.message);
+        setBookings([]); // Set empty array on error to avoid blocking table selection
       }
     };
     fetchBookings();
@@ -59,31 +78,18 @@ const Book = () => {
   // ==================== Lọc bàn còn trống dựa trên ngày, giờ và số người
   const availableTables = useMemo(() => {
     if (!date || !time || !person) {
-      return allTables;
+      return [];
     }
-
-    // Lọc các booking trùng ngày và giờ
-    const conflictingBookings = bookings.filter((booking) => {
-      if (booking.orderType !== "dine-in") return false;
-      const bookingDate = new Date(booking.date).toISOString().split("T")[0];
-      return bookingDate === date && booking.time === time;
-    });
-
-    // Lấy danh sách số bàn đã được đặt
-    const bookedTableNumbers = new Set(
-      conflictingBookings
-        .map((b) => b.tableNumber)
-        .filter(Boolean)
-        .map((num) => num.toString())
-    );
-
-    // Lọc bàn còn trống và phù hợp với số người
-    return allTables.filter(
-      (table) =>
-        !bookedTableNumbers.has(table.number.toString()) &&
-        table.capacity >= person
-    );
-  }, [allTables, bookings, date, time, person]);
+    return tables
+      .filter((table) => table && table.isActive)
+      .filter((table) => Number(table.capacity || 0) >= Number(person || 0))
+      .filter((table) => !isTableBusy(table, date, time))
+      .sort((a, b) => {
+        const numA = Number(a.number) || 0;
+        const numB = Number(b.number) || 0;
+        return numA - numB;
+      });
+  }, [tables, bookings, date, time, person, isTableBusy]);
 
   // ==================== Tạo options cho DropdownSelect
   const tableOptions = useMemo(() => {
@@ -96,7 +102,9 @@ const Book = () => {
       ];
     }
     return availableTables.map((table) => ({
-      label: `Bàn ${table.number} (${table.capacity} người)`,
+      label: `Bàn ${table.number} (${table.capacity || 0} người)${
+        table.location ? ` • ${table.location}` : ""
+      }`,
       value: table.number.toString(),
     }));
   }, [availableTables]);
@@ -112,6 +120,19 @@ const Book = () => {
       .catch(() => {});
   }, [API_BASE_URL]);
 
+  useEffect(() => {
+    fetch(`${API_BASE_URL}/api/tables`)
+      .then((response) => response.json())
+      .then((json) => {
+        setTables(Array.isArray(json) ? json : []);
+      })
+      .catch((err) => console.error("Lỗi fetch tables:", err));
+  }, [API_BASE_URL]);
+
+  useEffect(() => {
+    setTableNumber("");
+  }, [date, time]);
+
   // ==================== All Functions
   const handleToggleDish = (dish) => {
     setSelectedDishes((prev) => {
@@ -125,6 +146,7 @@ const Book = () => {
           dishId: dish._id,
           name: dish.name,
           price: Number(dish.price) || 0,
+          discountPercent: Number(dish.discountPercent) || 0,
           quantity: 1,
         },
       ];
@@ -140,18 +162,26 @@ const Book = () => {
     );
   };
 
-  // Tính tổng tiền món đã chọn
+  // Tính tổng tiền món đã chọn (áp dụng giảm giá của từng món)
   const selectedDishTotal = useMemo(
     () =>
-      selectedDishes.reduce(
-        (sum, dish) => sum + dish.price * (dish.quantity || 1),
-        0
-      ),
+      selectedDishes.reduce((sum, dish) => {
+        const basePrice = Number(dish.price) || 0;
+        const discountPercent = Number(dish.discountPercent) || 0;
+        const discountedPrice = basePrice * (1 - discountPercent / 100);
+        return sum + discountedPrice * (dish.quantity || 1);
+      }, 0),
     [selectedDishes]
   );
 
+  const TRANSFER_DISCOUNT_CODE = "CHUYENKHOAN";
+  const TRANSFER_DISCOUNT_PERCENT = 5;
+  const applyTransferDiscount =
+    selectedDishes.length > 0 && paymentMethod === "bank";
   // Tính giảm giá (5% khi chuyển khoản, chỉ khi có món)
-  const discountRate = selectedDishes.length > 0 && paymentMethod === "bank" ? 0.05 : 0;
+  const discountRate = applyTransferDiscount
+    ? TRANSFER_DISCOUNT_PERCENT / 100
+    : 0;
   const discountAmount = useMemo(
     () => selectedDishTotal * discountRate,
     [selectedDishTotal, discountRate]
@@ -170,6 +200,19 @@ const Book = () => {
   }, [person]);
 
   // ==================== Submit Function
+  const resetForm = useCallback(() => {
+    setDate("");
+    setTime("");
+    setName("");
+    setPhone("");
+    setEmail("");
+    setPerson(1);
+    setTableNumber("");
+    setNote("");
+    setSelectedDishes([]);
+    setPaymentMethod("bank");
+  }, []);
+
   const handleSubmit = async (e) => {
     e.preventDefault();
 
@@ -201,50 +244,116 @@ const Book = () => {
 
     setLoading(true);
 
+    const token = localStorage.getItem("token");
+    const headers = {
+      "Content-Type": "application/json",
+      ...(token ? { Authorization: `Bearer ${token}` } : {}),
+    };
+
+    const hasDishes = selectedDishes.length > 0;
+    const shouldUseOnlinePayment = !hasDishes || paymentMethod === "bank";
+    const resolvedTotal = hasDishes ? finalTotal : depositRequired;
+    const resolvedPaymentMethod = hasDishes ? paymentMethod : "bank";
+
+    const payload = {
+      bankCode: "",
+      date,
+      time,
+      name,
+      phone,
+      email,
+      people: person,
+      tableNumber,
+      note,
+      orderType: "dine-in",
+      ship: { isShip: false, address: "" },
+      selectedDishes: selectedDishes.map((dish) => ({
+        dishId: dish.dishId,
+        quantity: dish.quantity,
+      })),
+      discount: applyTransferDiscount ? TRANSFER_DISCOUNT_PERCENT : 0,
+      discountCode: applyTransferDiscount ? TRANSFER_DISCOUNT_CODE : undefined,
+      payment: {
+        paymentMethod: resolvedPaymentMethod,
+      },
+      totalAmount: resolvedTotal,
+      language: "vn",
+    };
+
+    const requestUrl = shouldUseOnlinePayment
+      ? `${API_BASE_URL}/api/order/create_payment_url`
+      : `${API_BASE_URL}/api/bookings`;
+
     try {
-      const response = await fetch(`${API_BASE_URL}/api/bookings`, {
+      const response = await fetch(requestUrl, {
         method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          date,
-          time,
-          name,
-          phone,
-          email,
-          people: person,
-          tableNumber,
-          note,
-          orderType: "dine-in",
-          selectedDishes: selectedDishes.map((dish) => ({
-            dishId: dish.dishId,
-            quantity: dish.quantity,
-          })),
-          paymentMethod,
-        }),
+        headers,
+        body: JSON.stringify(payload),
       });
 
-      if (response.ok) {
-        showSuccess("Đặt bàn thành công!");
+      const contentType = response.headers.get("content-type") || "";
+      const responseData = contentType.includes("application/json")
+        ? await response.json()
+        : await response.text();
 
-        // Reset form sau khi thành công
-        setDate("");
-        setTime("");
-        setName("");
-        setPhone("");
-        setEmail("");
-        setPerson(1);
-        setTableNumber("");
-        setNote("");
-        setSelectedDishes([]);
+      if (!response.ok) {
+        const message =
+          typeof responseData === "object"
+            ? responseData.message || "Đặt bàn thất bại!"
+            : "Đặt bàn thất bại!";
+        throw new Error(message);
+      }
+
+      if (!shouldUseOnlinePayment) {
+        showSuccess("Đặt bàn thành công! Chúng tôi sẽ liên hệ xác nhận sớm.");
+        resetForm();
+        return;
+      }
+
+      if (
+        responseData?.data &&
+        typeof responseData.data === "object" &&
+        responseData.data.paymentUrl
+      ) {
+        const { paymentUrl, payment } = responseData.data;
+        resetForm();
+        let paymentWindow = globalThis.open(paymentUrl, "_blank");
+
+        if (!paymentWindow) {
+          showError("Popup bị chặn! Vui lòng cho phép popup và thử lại.");
+          return;
+        }
+
+        const interval = setInterval(async () => {
+          if (paymentWindow && paymentWindow.closed) {
+            paymentWindow = globalThis.open(paymentUrl, "_blank");
+          }
+          if (!paymentWindow) {
+            clearInterval(interval);
+            return;
+          }
+
+          try {
+            const statusRes = await fetch(
+              `${API_BASE_URL}/api/order/order_status/${payment.orderId}`
+            ).then((r) => r.json());
+            if (statusRes.data?.payment?.paidAt !== null) {
+              clearInterval(interval);
+              if (paymentWindow && !paymentWindow.closed) {
+                paymentWindow.close();
+              }
+              showSuccess("Thanh toán thành công! Hẹn gặp bạn tại nhà hàng.");
+            }
+          } catch (err) {
+            console.error("Error checking payment status:", err);
+          }
+        }, 2000);
       } else {
-        const errorData = await response.json();
-        showError(errorData.message || "Đặt bàn thất bại!");
+        showError("Không lấy được URL thanh toán! Vui lòng thử lại.");
       }
     } catch (error) {
       console.error("Error submitting booking:", error);
-      showError("Có lỗi xảy ra khi gửi yêu cầu!");
+      showError(error.message || "Có lỗi xảy ra khi gửi yêu cầu!");
     } finally {
       setLoading(false);
     }
@@ -367,6 +476,7 @@ const Book = () => {
                     Số bàn <span className="text-red-500">*</span>
                   </label>
                   {date && time && person ? (
+                    tableOptions.length > 0 ? (
                     <>
                       <DropdownSelect
                         options={tableOptions}
@@ -375,19 +485,17 @@ const Book = () => {
                         placeholder="Chọn bàn"
                         className="w-full"
                       />
-                      {availableTables.length > 0 && (
                         <p className="mt-2 text-xs text-emerald-600">
-                          ✓ Có {availableTables.length} bàn trống phù hợp
+                          ✓ Có {tableOptions.length} bàn phù hợp
                         </p>
-                      )}
-                      {availableTables.length === 0 && (
-                        <p className="mt-2 text-xs text-red-500">
-                          ⚠ Không có bàn trống cho {person} người vào thời điểm này
-                        </p>
-                      )}
-                    </>
+                      </>
+                    ) : (
+                      <div className="w-full rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-700">
+                        Không có bàn trống cho {person} người vào thời điểm này.
+                      </div>
+                    )
                   ) : (
-                    <div className="w-full h-12 rounded-xl border-2 border-slate-200 bg-slate-50 px-4 flex items-center text-slate-500 text-sm">
+                    <div className="w-full rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm text-slate-500">
                       Vui lòng chọn ngày, giờ và số người trước
                     </div>
                   )}
@@ -399,7 +507,7 @@ const Book = () => {
             <div className="p-6 border rounded-2xl bg-slate-50 space-y-4">
               <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
                 <p className="font-DM_sans font-bold text-base">
-                  🍽️ Bạn có muốn đặt món trước cho buổi ăn này không? (tuỳ chọn)
+                  🍽️ Bạn có muốn chọn món trước không?
                 </p>
                 <span className="text-sm text-slate-500">
                   Bạn có thể bỏ qua bước này
@@ -438,9 +546,27 @@ const Book = () => {
                           <p className="font-semibold text-slate-800">
                             {dish.name}
                           </p>
-                          <p className="text-sm text-blue-600 font-bold">
-                            {Number(dish.price).toLocaleString("vi-VN")} đ
-                          </p>
+                          {dish.discountPercent > 0 ? (
+                            <div className="flex items-center gap-2">
+                              <span className="text-xs text-slate-400 line-through">
+                                {Number(dish.price).toLocaleString("vi-VN")} đ
+                              </span>
+                              <span className="text-sm text-red-600 font-bold">
+                                {(
+                                  Number(dish.price) *
+                                  (1 - (Number(dish.discountPercent) || 0) / 100)
+                                ).toLocaleString("vi-VN")}{" "}
+                                đ
+                              </span>
+                              <span className="px-2 py-0.5 rounded-full bg-red-500 text-white text-xs font-bold">
+                                -{dish.discountPercent}%
+                              </span>
+                            </div>
+                          ) : (
+                            <p className="text-sm text-blue-600 font-bold">
+                              {Number(dish.price).toLocaleString("vi-VN")} đ
+                            </p>
+                          )}
                         </div>
                       </label>
                       {selected && (
@@ -560,6 +686,9 @@ const Book = () => {
                         <p className="text-sm text-slate-600">
                           Giảm 5% trên tổng giá trị đơn hàng khi thanh toán trước.
                         </p>
+                        <p className="text-xs text-blue-500 mt-1">
+                          Áp dụng mã {TRANSFER_DISCOUNT_CODE}.
+                        </p>
                       </div>
                     </label>
 
@@ -595,7 +724,9 @@ const Book = () => {
                   </div>
                   {discountAmount > 0 && (
                     <div className="flex justify-between text-sm text-emerald-300">
-                      <span>Giảm 5% (chuyển khoản)</span>
+                      <span>
+                        Giảm {TRANSFER_DISCOUNT_PERCENT}% (mã {TRANSFER_DISCOUNT_CODE})
+                      </span>
                       <span>-{discountAmount.toLocaleString("vi-VN")} đ</span>
                     </div>
                   )}

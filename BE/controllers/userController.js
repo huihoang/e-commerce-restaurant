@@ -10,16 +10,27 @@ const getUser = async (req, res) => {
     }
 }
 
+const sanitizePayload = (payload = {}) => {
+    const cleaned = { ...payload }
+    Object.keys(cleaned).forEach((key) => {
+        if (cleaned[key] === undefined) {
+            delete cleaned[key]
+        }
+    })
+    return cleaned
+}
+
 const updateCurrentUser = async (req, res) => {
-    const { username, email } = req.body
-    console.log('⚙️ Dữ liệu update:', { id: req.user.id, username, email })
+    const { username, email, fullName, birthday, phone } = req.body
+    console.log('⚙️ Dữ liệu update:', { id: req.user.id, username, email, fullName, birthday, phone })
 
     try {
+        const updateData = sanitizePayload({ username, email, fullName, birthday, phone })
         const updatedUser = await User.findByIdAndUpdate(
             req.user.id,
-            { username, email },
+            updateData,
             { new: true, runValidators: true }
-        )
+        ).select('-password')
         if (!updatedUser) {
             return res.status(404).json({ message: 'Không tìm thấy user để cập nhật' })
         }
@@ -32,7 +43,7 @@ const updateCurrentUser = async (req, res) => {
 
 const getAll = async (req, res) => {
     try {
-        const users = await User.find()
+        const users = await User.find().select('-password')
         res.json(users)
     } catch (err) {
         res.status(500).json({ error: 'Lỗi khi lấy danh sách người dùng' })
@@ -40,13 +51,19 @@ const getAll = async (req, res) => {
 }
 
 const updateUser = async (req, res) => {
-    const { username, email, role } = req.body
+    const { username, email, role, fullName, birthday, phone } = req.body
     try {
+        const updateData = sanitizePayload({ username, email, role, fullName, birthday, phone })
+        if (updateData.birthday === "") {
+            delete updateData.birthday
+        } else if (updateData.birthday) {
+            updateData.birthday = new Date(updateData.birthday)
+        }
         const user = await User.findByIdAndUpdate(
             req.params.id,
-            { username, email, role },
+            updateData,
             { new: true }
-        )
+        ).select('-password')
         res.json(user)
     } catch (err) {
         res.status(500).json({ error: 'Lỗi khi cập nhật người dùng' })

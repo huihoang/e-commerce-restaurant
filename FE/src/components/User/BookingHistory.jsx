@@ -8,6 +8,7 @@ import HeroStatsCard from "./BookingHistory/HeroStatsCard";
 import BookingTabs from "./BookingHistory/BookingTabs";
 import BookingFilters from "./BookingHistory/BookingFilters";
 import BookingHistoryList from "./BookingHistory/BookingHistoryList";
+import ConfirmModal from "@/components/common/ConfirmModal";
 
 const BookingHistory = () => {
   const [bookings, setBookings] = useState([]);
@@ -22,32 +23,25 @@ const BookingHistory = () => {
   const [sortBy, setSortBy] = useState("newest");
   const [currentPage, setCurrentPage] = useState(1);
   const ITEMS_PER_PAGE = 8;
+  const [confirmModal, setConfirmModal] = useState({
+    open: false,
+    bookingId: null,
+  });
   const API_BASE_URL =
     import.meta.env.VITE_API_BASE_URL || "http://localhost:5000";
 
-  // ==================== Mock Data Generator ====================
-  const generateMockData = (booking) => {
-    const orderTypes = ["dine-in", "takeaway"];
-    const orderType = orderTypes[Math.floor(Math.random() * orderTypes.length)];
-
+  const normalizeBooking = (booking) => {
+    const derivedOrderType =
+      booking.orderType || (booking.ship?.isShip ? "takeaway" : "dine-in");
+    const normalizedTableNumber =
+      booking.tableId?.number?.toString() || booking.tableNumber || "";
     return {
       ...booking,
-      discount: Math.floor(Math.random() * 31),
-      orderType: orderType,
-      tableNumber:
-        orderType === "dine-in" ? Math.floor(Math.random() * 20) + 1 : null,
-      shippingInfo:
-        orderType === "takeaway"
-          ? {
-              shipperName:
-                ["Nguyễn Văn A", "Trần Thị B", "Lê Văn C", "Phạm Thị D"][
-                  Math.floor(Math.random() * 4)
-                ],
-              shipperPhone: `0${Math.floor(Math.random() * 900000000) + 100000000}`,
-              estimatedTime: `${Math.floor(Math.random() * 30) + 15} phút`,
-              address: booking.note || "123 Đường ABC, Quận XYZ, TP.HCM",
-            }
-          : null,
+      orderType: derivedOrderType,
+      discount: booking.discount || 0,
+      tableNumber: normalizedTableNumber,
+      deliveryAddress:
+        booking.deliveryAddress || booking.ship?.address || booking.note || "",
     };
   };
 
@@ -61,14 +55,12 @@ const BookingHistory = () => {
           },
         });
 
-        const sortedBookings = res.data.sort(
+        const sortedBookings = res.data
+          .map(normalizeBooking)
+          .sort(
           (a, b) => new Date(b.createdAt) - new Date(a.createdAt)
         );
-
-      const bookingsWithMock = sortedBookings.map((booking) =>
-        generateMockData(booking)
-      );
-      setBookings(bookingsWithMock);
+      setBookings(sortedBookings);
       } catch (err) {
         console.error("❌ Lỗi khi lấy lịch sử đặt bàn:", err.message);
     } finally {
@@ -81,12 +73,37 @@ const BookingHistory = () => {
   }, [fetchBookings]);
 
   const calculateTotalAmount = (selectedDishes, discount = 0) => {
+    // Tính tổng tiền với giảm giá của từng món
+    let originalSubtotal = 0;
+    let itemDiscountAmount = 0;
     const subtotal = selectedDishes.reduce((total, dishItem) => {
-      return total + dishItem.dishId.price * dishItem.quantity;
+      const price = Number(dishItem.dishId?.price) || 0;
+      const quantity = Number(dishItem.quantity) || 0;
+      const discountPercent = Number(dishItem.dishId?.discountPercent) || 0;
+      
+      const originalPrice = price * quantity;
+      originalSubtotal += originalPrice;
+      
+      const discountedPrice = price * (1 - discountPercent / 100);
+      const finalPrice = discountedPrice * quantity;
+      
+      if (discountPercent > 0) {
+        itemDiscountAmount += originalPrice - finalPrice;
+      }
+      
+      return total + finalPrice;
     }, 0);
+    
+    // Áp dụng mã giảm giá (nếu có)
+    const discountCodeAmount = (subtotal * discount) / 100;
+    const total = Math.max(0, subtotal - discountCodeAmount);
+    
     return {
+      originalSubtotal,
+      itemDiscountAmount,
       subtotal,
-      total: subtotal - (subtotal * discount) / 100,
+      discountCodeAmount,
+      total,
     };
   };
 
@@ -107,18 +124,17 @@ const BookingHistory = () => {
     );
     updatedBooking.totalAmount = amounts.total;
 
+    const normalized = normalizeBooking(updatedBooking);
+
     setBookings((prevBookings) =>
       prevBookings.map((booking) =>
-        booking._id === updatedBooking._id ? updatedBooking : booking
+        booking._id === normalized._id ? normalized : booking
       )
     );
     handleCloseModal();
   };
 
   const handleDeleteBooking = async (bookingId) => {
-    if (!globalThis.confirm("Bạn có chắc chắn muốn xóa đơn đặt món này không?")) {
-      return;
-    }
     try {
       const token = localStorage.getItem("token");
       await axios.delete(`${API_BASE_URL}/api/bookings/${bookingId}`, {
@@ -133,6 +149,20 @@ const BookingHistory = () => {
     } catch (err) {
       console.error("❌ Lỗi khi xóa đặt bàn:", err.message);
     }
+  };
+
+  const openDeleteModal = (bookingId) => {
+    setConfirmModal({ open: true, bookingId });
+  };
+
+  const closeDeleteModal = () => {
+    setConfirmModal({ open: false, bookingId: null });
+  };
+
+  const confirmDelete = async () => {
+    if (!confirmModal.bookingId) return;
+    await handleDeleteBooking(confirmModal.bookingId);
+    closeDeleteModal();
   };
 
   const handleOpenPaymentModal = (booking) => {
@@ -161,7 +191,9 @@ const BookingHistory = () => {
   };
 
   const tabFilteredBookings = useMemo(() => {
-    return bookings.filter((b) => b.orderType === activeTab);
+    return bookings.filter(
+      (b) => (b.orderType || "dine-in") === activeTab
+    );
   }, [bookings, activeTab]);
 
   const filteredAndSortedBookings = useMemo(() => {
@@ -177,9 +209,10 @@ const BookingHistory = () => {
     }
 
     if (paymentFilter !== "all") {
-      result = result.filter(
-        (b) => b.isPaid === (paymentFilter === "paid")
-      );
+      result = result.filter((b) => {
+        const isPaid = b.payment?.isPaid || false;
+        return isPaid === (paymentFilter === "paid");
+      });
     }
 
     if (sortBy === "newest") {
@@ -216,15 +249,14 @@ const BookingHistory = () => {
   }, [filteredAndSortedBookings, currentPage]);
 
   const stats = useMemo(() => {
-    const filtered = bookings.filter((b) => b.orderType === activeTab);
-    const total = filtered.length;
-    const paid = filtered.filter((b) => b.isPaid).length;
+    const total = bookings.length;
+    const paid = bookings.filter((b) => b.payment?.isPaid).length;
     const unpaid = total - paid;
-    const totalSpent = filtered
-      .filter((b) => b.isPaid)
+    const totalSpent = bookings
+      .filter((b) => b.payment?.isPaid)
       .reduce((sum, b) => sum + (b.totalAmount || 0), 0);
     return { total, paid, unpaid, totalSpent };
-  }, [bookings, activeTab]);
+  }, [bookings]);
 
   const paymentFilterOptions = [
     { label: "Tất cả", value: "all" },
@@ -245,7 +277,7 @@ const BookingHistory = () => {
   };
 
   return (
-              <div>
+    <div>
       <HeroStatsCard stats={stats} onRefresh={fetchBookings} />
 
       <BookingTabs activeTab={activeTab} onTabChange={setActiveTab} />
@@ -271,7 +303,7 @@ const BookingHistory = () => {
         formatPrice={formatPrice}
         onViewDetail={handleViewDetail}
         onEdit={handleEditBooking}
-        onDelete={handleDeleteBooking}
+        onDelete={openDeleteModal}
         onPayment={handleOpenPaymentModal}
       />
 
@@ -307,6 +339,15 @@ const BookingHistory = () => {
           onClose={handleCloseDetail}
         />
       )}
+      <ConfirmModal
+        open={confirmModal.open}
+        title="Xóa đơn đặt món"
+        message="Bạn có chắc chắn muốn xoá đơn đặt món này? Thao tác này không thể hoàn tác."
+        confirmLabel="Xoá"
+        cancelLabel="Huỷ"
+        onConfirm={confirmDelete}
+        onCancel={closeDeleteModal}
+      />
     </div>
   );
 };

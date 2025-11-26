@@ -1,3 +1,4 @@
+import PropTypes from "prop-types";
 import axios from "axios";
 import { useNotification } from "@/contexts/NotificationContext";
 
@@ -26,18 +27,52 @@ const PaymentModal = ({ booking, onClose, onPaymentSuccess }) => {
     }
   };
 
-  const calculateLineTotal = (price, quantity) => price * quantity;
-
-  const calculateTotalAmount = () => {
-    return booking.selectedDishes.reduce((total, dishItem) => {
-      return (
-        total + calculateLineTotal(dishItem.dishId.price, dishItem.quantity)
-      );
-    }, 0);
+  const calculateLineTotal = (price = 0, quantity = 0, discountPercent = 0) => {
+    const basePrice = Number(price) || 0;
+    const qty = Number(quantity) || 0;
+    const discountedPrice = basePrice * (1 - discountPercent / 100);
+    return discountedPrice * qty;
   };
 
+  const calculateTotalAmount = () => {
+    // Tính tổng tiền với giảm giá của từng món
+    let originalSubtotal = 0;
+    let itemDiscountAmount = 0;
+    const subtotal = booking.selectedDishes.reduce((total, dishItem) => {
+      const price = Number(dishItem.dishId?.price) || 0;
+      const quantity = Number(dishItem.quantity) || 0;
+      const discountPercent = Number(dishItem.dishId?.discountPercent) || 0;
+      
+      const originalPrice = price * quantity;
+      originalSubtotal += originalPrice;
+      
+      const discountedPrice = price * (1 - discountPercent / 100);
+      const finalPrice = discountedPrice * quantity;
+      
+      if (discountPercent > 0) {
+        itemDiscountAmount += originalPrice - finalPrice;
+      }
+      
+      return total + finalPrice;
+    }, 0);
+    
+    // Áp dụng mã giảm giá (nếu có)
+    const discountPercent = booking.discount || 0;
+    const discountCodeAmount = (subtotal * discountPercent) / 100;
+    const total = Math.max(0, subtotal - discountCodeAmount);
+    
+    return {
+      originalSubtotal,
+      itemDiscountAmount,
+      subtotal,
+      discountCodeAmount,
+      total,
+    };
+  };
+  const amounts = calculateTotalAmount();
+
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm p-4">
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm p-0">
       <div className="w-full max-w-2xl max-h-[90vh] flex flex-col rounded-3xl bg-white shadow-2xl">
         {/* Header */}
         <div className="flex items-center justify-between border-b border-slate-200 bg-gradient-to-r from-green-500 to-emerald-600 px-6 py-4 rounded-t-3xl">
@@ -88,7 +123,7 @@ const PaymentModal = ({ booking, onClose, onPaymentSuccess }) => {
               <tbody>
                 {booking.selectedDishes.map((dishItem, index) => (
                   <tr
-                    key={index}
+                    key={`${dishItem.dishId?._id || dishItem.dishId || index}`}
                     className="border-t border-slate-100 transition hover:bg-slate-50"
                   >
                     <td className="p-4">
@@ -112,13 +147,30 @@ const PaymentModal = ({ booking, onClose, onPaymentSuccess }) => {
                       </span>
                     </td>
                     <td className="p-4 text-right text-slate-700">
-                      {dishItem.dishId?.price?.toLocaleString("vi-VN")} đ
+                      {(() => {
+                        const discountPercent = Number(dishItem.dishId?.discountPercent) || 0;
+                        const price = Number(dishItem.dishId?.price) || 0;
+                        const discountedPrice = price * (1 - discountPercent / 100);
+                        return discountPercent > 0 ? (
+                          <div>
+                            <p className="text-xs text-slate-400 line-through">
+                              {price.toLocaleString("vi-VN")} đ
+                            </p>
+                            <p className="text-red-600 font-semibold">
+                              {discountedPrice.toLocaleString("vi-VN")} đ
+                            </p>
+                          </div>
+                        ) : (
+                          <span>{price.toLocaleString("vi-VN")} đ</span>
+                        );
+                      })()}
                     </td>
                     <td className="p-4 text-right">
                       <span className="font-bold text-emerald-600">
                         {calculateLineTotal(
-                          dishItem.dishId.price,
-                          dishItem.quantity
+                          dishItem.dishId?.price,
+                          dishItem.quantity,
+                          dishItem.dishId?.discountPercent || 0
                         ).toLocaleString("vi-VN")}{" "}
                         đ
                       </span>
@@ -130,13 +182,62 @@ const PaymentModal = ({ booking, onClose, onPaymentSuccess }) => {
           </div>
 
           {/* Total Amount */}
-          <div className="mb-6 flex items-center justify-between rounded-xl bg-gradient-to-r from-green-50 to-emerald-50 px-6 py-4">
-            <span className="text-lg font-bold text-slate-700">
-              💰 Tổng cộng:
-            </span>
-            <span className="text-2xl font-bold text-green-700">
-              {calculateTotalAmount().toLocaleString("vi-VN")} đ
-            </span>
+          <div className="mb-6 space-y-2 rounded-xl bg-gradient-to-r from-green-50 to-emerald-50 px-6 py-4">
+            {amounts.itemDiscountAmount > 0 && (
+              <div className="flex items-center justify-between">
+                <span className="text-sm font-semibold text-slate-600">
+                  Tổng giá gốc
+                </span>
+                <span className="text-base font-bold text-slate-900">
+                  {amounts.originalSubtotal.toLocaleString("vi-VN")} đ
+                </span>
+              </div>
+            )}
+            {amounts.itemDiscountAmount > 0 && (
+              <div className="flex items-center justify-between">
+                <span className="text-sm font-semibold text-orange-600">
+                  🔥 Giảm giá trên món
+                </span>
+                <span className="text-base font-bold text-orange-600">
+                  -{amounts.itemDiscountAmount.toLocaleString("vi-VN")} đ
+                </span>
+              </div>
+            )}
+            <div className="flex items-center justify-between">
+              <span className="text-sm font-semibold text-slate-600">
+                Tạm tính
+              </span>
+              <span className="text-base font-bold text-slate-900">
+                {amounts.subtotal.toLocaleString("vi-VN")} đ
+              </span>
+            </div>
+            {booking.discount > 0 && (
+              <div className="flex items-center justify-between">
+                <span className="text-sm font-semibold text-blue-600">
+                  🎫 Giảm giá mã ({booking.discountCode || 'Mã giảm giá'}): ({booking.discount}%)
+                </span>
+                <span className="text-base font-bold text-blue-600">
+                  -{amounts.discountCodeAmount.toLocaleString("vi-VN")} đ
+                </span>
+              </div>
+            )}
+            <div className="flex items-center justify-between border-t border-slate-200 pt-2">
+              <span className="text-lg font-bold text-slate-700">
+                💰 Tổng cộng:
+              </span>
+              <div className="text-right">
+                {(amounts.itemDiscountAmount > 0 || amounts.discountCodeAmount > 0) && (
+                  <p className="text-sm text-slate-400 line-through">
+                    {amounts.itemDiscountAmount > 0 
+                      ? amounts.originalSubtotal.toLocaleString("vi-VN") 
+                      : amounts.subtotal.toLocaleString("vi-VN")} đ
+                  </p>
+                )}
+                <span className="text-2xl font-bold text-green-700">
+                  {amounts.total.toLocaleString("vi-VN")} đ
+                </span>
+              </div>
+            </div>
           </div>
 
           {/* Action Buttons */}
@@ -160,6 +261,30 @@ const PaymentModal = ({ booking, onClose, onPaymentSuccess }) => {
       </div>
     </div>
   );
+};
+
+PaymentModal.propTypes = {
+  booking: PropTypes.shape({
+    _id: PropTypes.string.isRequired,
+    name: PropTypes.string,
+    phone: PropTypes.string,
+    date: PropTypes.string,
+    time: PropTypes.string,
+    people: PropTypes.number,
+    discount: PropTypes.number,
+    selectedDishes: PropTypes.arrayOf(
+      PropTypes.shape({
+        dishId: PropTypes.shape({
+          name: PropTypes.string,
+          price: PropTypes.oneOfType([PropTypes.number, PropTypes.string]),
+          image: PropTypes.string,
+        }),
+        quantity: PropTypes.number,
+      })
+    ),
+  }).isRequired,
+  onClose: PropTypes.func.isRequired,
+  onPaymentSuccess: PropTypes.func.isRequired,
 };
 
 export default PaymentModal;

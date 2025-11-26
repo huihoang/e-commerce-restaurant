@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import Pagination from "@/components/common/Pagination";
 import DropdownSelect from "@/components/common/DropdownSelect";
+import ConfirmModal from "@/components/common/ConfirmModal";
 import { useNotification } from "@/contexts/NotificationContext";
 
 const AdminContactList = () => {
@@ -10,6 +11,10 @@ const AdminContactList = () => {
   const [categoryFilter, setCategoryFilter] = useState("all");
   const [currentPage, setCurrentPage] = useState(1);
   const ITEMS_PER_PAGE = 6;
+  const [confirmModal, setConfirmModal] = useState({
+    open: false,
+    contactId: null,
+  });
 
   const API_BASE_URL =
     import.meta.env.VITE_API_BASE_URL || "http://localhost:5000";
@@ -29,9 +34,6 @@ const AdminContactList = () => {
   }, [fetchContacts]);
 
   const handleDelete = async (id) => {
-    if (!globalThis.confirm("Bạn có chắc chắn muốn xóa liên hệ này không?")) {
-      return;
-    }
     try {
       const res = await fetch(`${API_BASE_URL}/api/contact/${id}`, {
         method: "DELETE",
@@ -46,6 +48,20 @@ const AdminContactList = () => {
       console.error("Error deleting contact:", error);
       showError("Lỗi khi xóa liên hệ!");
     }
+  };
+
+  const openDeleteModal = (contactId) => {
+    setConfirmModal({ open: true, contactId });
+  };
+
+  const closeDeleteModal = () => {
+    setConfirmModal({ open: false, contactId: null });
+  };
+
+  const confirmDeleteContact = async () => {
+    if (!confirmModal.contactId) return;
+    await handleDelete(confirmModal.contactId);
+    closeDeleteModal();
   };
 
   const categoryOptions = useMemo(() => {
@@ -99,6 +115,7 @@ const AdminContactList = () => {
   }, [filteredContacts, currentPage]);
 
   return (
+    <>
     <div className="space-y-6">
       <section className="rounded-3xl bg-gradient-to-r from-cyan-500 to-blue-600 p-6 text-white shadow-2xl">
         <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
@@ -177,7 +194,7 @@ const AdminContactList = () => {
                     : "—"}
                 </span>
                 <button
-                  onClick={() => handleDelete(contact._id)}
+                  onClick={() => openDeleteModal(contact._id)}
                   className="rounded-full bg-rose-600/10 px-4 py-1.5 text-sm font-semibold text-rose-600 transition hover:bg-rose-600 hover:text-white"
                 >
                   🗑 Xoá
@@ -196,6 +213,16 @@ const AdminContactList = () => {
         </div>
       </section>
     </div>
+      <ConfirmModal
+        open={confirmModal.open}
+        title="Xóa liên hệ"
+        message="Bạn có chắc chắn muốn xoá phản hồi này khỏi hộp thư?"
+        confirmLabel="Xoá"
+        cancelLabel="Huỷ"
+        onConfirm={confirmDeleteContact}
+        onCancel={closeDeleteModal}
+      />
+    </>
   );
 };
 

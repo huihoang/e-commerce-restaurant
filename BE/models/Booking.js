@@ -21,6 +21,17 @@ const bookingSchema = new mongoose.Schema(
 
     people: { type: Number, default: 1 },
     note: String,
+    orderType: {
+      type: String,
+      enum: ["dine-in", "takeaway"],
+      default: "dine-in",
+    },
+           tableId: { type: mongoose.Schema.Types.ObjectId, ref: "Table" },
+           tableNumber: { type: String },
+    deliveryAddress: { type: String },
+    deliveryEmail: { type: String },
+    discount: { type: Number, default: 0 },
+    discountCode: { type: String },
     selectedDishes: [
       {
         dishId: {
@@ -45,6 +56,13 @@ const bookingSchema = new mongoose.Schema(
     timestamps: true,
   }
 );
+
+bookingSchema.set("toJSON", { virtuals: true });
+bookingSchema.set("toObject", { virtuals: true });
+
+bookingSchema.virtual("isPaid").get(function () {
+  return this.payment?.isPaid || false;
+});
 
 // ========== Tính tổng tiền khi tạo booking ==========
 // bookingSchema.pre("save", async function (next) {
@@ -75,12 +93,16 @@ bookingSchema.pre("findOneAndUpdate", async function (next) {
     for (const dish of update.selectedDishes) {
       const menuItem = await MenuItem.findById(dish.dishId);
       if (menuItem) {
-        total += menuItem.price * dish.quantity;
+        const basePrice = Number(menuItem.price) || 0;
+        const discountPercent = Number(menuItem.discountPercent) || 0;
+        const discountedPrice = basePrice * (1 - discountPercent / 100);
+        total += discountedPrice * (dish.quantity || 1);
       }
     }
 
-    // Gán lại totalAmount cho update
-    update.totalAmount = total;
+    const discountPercent =
+      typeof update.discount === "number" ? update.discount : 0;
+    update.totalAmount = total - (total * discountPercent) / 100;
     this.setUpdate(update);
 
     next();

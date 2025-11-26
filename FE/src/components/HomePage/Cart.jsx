@@ -1,5 +1,5 @@
 // ==================== All Import
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Link } from "react-router-dom";
 import axios from "axios";
 import { getCart, updateQuantity, clearCart, addToCart } from "@/utils/cart";
@@ -7,106 +7,180 @@ import { useNotification } from "@/contexts/NotificationContext";
 import DropdownSelect from "@/components/common/DropdownSelect";
 
 const Cart = () => {
-  const { showError } = useNotification();
+  const { showError, showSuccess } = useNotification();
+  const createInitialCustomer = useCallback(
+    () => ({
+      name: "",
+      phone: "",
+      email: "",
+      date: "",
+      time: "",
+      people: 1,
+      tableId: "",
+      tableNumber: "",
+      deliveryAddress: "",
+      note: "",
+    }),
+    []
+  );
   const [items, setItems] = useState([]);
   const [orderType, setOrderType] = useState("dine-in"); // "dine-in" hoặc "takeaway"
-  const [customer, setCustomer] = useState({
-    name: "",
-    phone: "",
-    email: "",
-    // Thông tin cho "Ăn tại quán"
-    date: "",
-    time: "",
-    people: 1,
-    tableNumber: "",
-    // Thông tin cho "Mang đi"
-    deliveryAddress: "",
-    note: "",
-  });
+  const [customer, setCustomer] = useState(() => createInitialCustomer());
   const [paymentMethod, setPaymentMethod] = useState("bank");
   const [related, setRelated] = useState([]);
   const [bookings, setBookings] = useState([]); // Danh sách booking để check bàn đã đặt
+  const [tables, setTables] = useState([]);
   const sliderRef = useRef(null);
   const API_BASE_URL =
     import.meta.env.VITE_API_BASE_URL || "http://localhost:5000";
 
-  // ==================== Mock data: Danh sách bàn (có thể fetch từ API sau)
-  const allTables = useMemo(() => {
-    return Array.from({ length: 20 }, (_, i) => {
-      let capacity;
-      if (i < 5) {
-        capacity = 2;
-      } else if (i < 10) {
-        capacity = 4;
-      } else if (i < 15) {
-        capacity = 6;
-      } else {
-        capacity = 8;
+  const normalizeBooking = (booking) => ({
+    ...booking,
+    orderType: booking.orderType || (booking.ship?.isShip ? "takeaway" : "dine-in"),
+  });
+
+  const tableMap = useMemo(() => {
+    const map = new Map();
+    for (const table of tables) {
+      if (!table) continue;
+      if (table._id) {
+        map.set(table._id, table);
       }
-      return {
-        number: i + 1,
-        capacity,
-      };
-    });
+      if (table.number !== undefined && table.number !== null) {
+        map.set(table.number.toString(), table);
+      }
+    }
+    return map;
+  }, [tables]);
+
+  const matchBookingTable = (booking, table) => {
+    if (!table) return false;
+    const bookingTableId =
+      booking.tableId?._id || booking.tableId || booking.table?._id;
+    if (bookingTableId && table._id) {
+      if (bookingTableId.toString() === table._id.toString()) {
+        return true;
+      }
+    }
+    if (booking.tableNumber && table.number !== undefined) {
+      if (booking.tableNumber.toString() === table.number.toString()) {
+        return true;
+      }
+    }
+    return false;
+  };
+
+  const isTableBusy = useCallback(
+    (table, dateValue, timeValue) => {
+      if (!dateValue || !timeValue) return true;
+      const dateKey = dateValue.split("T")[0];
+      return bookings.some((booking) => {
+        const bookingOrderType =
+          booking.orderType || (booking.ship?.isShip ? "takeaway" : "dine-in");
+        if (bookingOrderType !== "dine-in") return false;
+        const bookingDate = (booking.date || "").split("T")[0];
+        if (bookingDate !== dateKey) return false;
+        if (!matchBookingTable(booking, table)) return false;
+        const isPending = !(booking.payment?.isPaid);
+        const sameSlot = booking.time === timeValue;
+        return isPending || sameSlot;
+      });
+    },
+    [bookings]
+  );
+
+  const getTableLabel = useCallback((table) => {
+    if (!table) return "Bàn";
+    const baseName = table.name || `Bàn ${table.number}`;
+    const capacityLabel = `${table.capacity || 0} người`;
+    const areaLabel = table.area ? ` • ${table.area}` : "";
+    return `${baseName} (${capacityLabel})${areaLabel}`;
   }, []);
 
   // ==================== Fetch bookings để check bàn đã đặt
   useEffect(() => {
     const fetchBookings = async () => {
       try {
-        const res = await axios.get(`${API_BASE_URL}/api/bookings`);
-        setBookings(res.data || []);
+        const token = localStorage.getItem("token");
+        const headers = token ? { Authorization: `Bearer ${token}` } : {};
+        const res = await axios.get(`${API_BASE_URL}/api/bookings`, { headers });
+        const data = Array.isArray(res.data)
+          ? res.data.map(normalizeBooking)
+          : [];
+        setBookings(data);
       } catch (err) {
         console.error("❌ Lỗi khi lấy danh sách đặt bàn:", err.message);
+        setBookings([]); // Set empty array on error to avoid blocking table selection
       }
     };
     fetchBookings();
   }, [API_BASE_URL]);
 
+  useEffect(() => {
+    setCustomer((prev) => ({
+      ...prev,
+      tableId: "",
+      tableNumber: "",
+    }));
+  }, [customer.date, customer.time]);
+
+  useEffect(() => {
+    if (orderType !== "dine-in") {
+      setCustomer((prev) => ({
+        ...prev,
+        tableId: "",
+        tableNumber: "",
+      }));
+    }
+  }, [orderType]);
+
+  useEffect(() => {
+    const fetchTables = async () => {
+      try {
+        const res = await axios.get(`${API_BASE_URL}/api/tables`);
+        setTables(Array.isArray(res.data) ? res.data : []);
+      } catch (err) {
+        console.error("❌ Lỗi khi lấy danh sách bàn:", err.message);
+      }
+    };
+    fetchTables();
+  }, [API_BASE_URL]);
+
   // ==================== Lọc bàn còn trống dựa trên ngày, giờ và số người
   const availableTables = useMemo(() => {
     if (!customer.date || !customer.time || !customer.people) {
-      return allTables;
+      return [];
     }
 
-    // Lọc các booking trùng ngày và giờ
-    const conflictingBookings = bookings.filter((booking) => {
-      if (booking.orderType !== "dine-in") return false;
-      const bookingDate = new Date(booking.date).toISOString().split("T")[0];
-      return bookingDate === customer.date && booking.time === customer.time;
-    });
-
-    // Lấy danh sách số bàn đã được đặt
-    const bookedTableNumbers = new Set(
-      conflictingBookings
-        .map((b) => b.tableNumber)
-        .filter(Boolean)
-        .map((num) => num.toString())
-    );
-
-    // Lọc bàn còn trống và phù hợp với số người
-    return allTables.filter(
+    return tables
+      .filter((table) => table && table.isActive)
+      .filter(
       (table) =>
-        !bookedTableNumbers.has(table.number.toString()) &&
-        table.capacity >= customer.people
-    );
-  }, [allTables, bookings, customer.date, customer.time, customer.people]);
+          Number(table.capacity || 0) >= Number(customer.people || 0)
+      )
+      .filter(
+        (table) => !isTableBusy(table, customer.date, customer.time)
+      )
+      .sort((a, b) => (a.number || 0) - (b.number || 0));
+  }, [
+    tables,
+    bookings,
+    customer.date,
+    customer.time,
+    customer.people,
+    isTableBusy,
+  ]);
 
   // ==================== Tạo options cho DropdownSelect
   const tableOptions = useMemo(() => {
     if (availableTables.length === 0) {
-      return [
-        {
-          label: "Không có bàn trống",
-          value: "",
-        },
-      ];
+      return [];
     }
     return availableTables.map((table) => ({
-      label: `Bàn ${table.number} (${table.capacity} người)`,
-      value: table.number.toString(),
+      label: getTableLabel(table),
+      value: table._id,
     }));
-  }, [availableTables]);
+  }, [availableTables, getTableLabel]);
 
   useEffect(() => {
     setItems(getCart());
@@ -150,10 +224,12 @@ const Cart = () => {
 
   const totalPrice = useMemo(
     () =>
-      items.reduce(
-        (sum, i) => sum + (Number(i.price) || 0) * (Number(i.quantity) || 0),
-        0
-      ),
+      items.reduce((sum, i) => {
+        const basePrice = Number(i.price) || 0;
+        const discountPercent = Number(i.discountPercent) || 0;
+        const discountedPrice = basePrice * (1 - discountPercent / 100);
+        return sum + discountedPrice * (Number(i.quantity) || 0);
+      }, 0),
     [items]
   );
 
@@ -164,7 +240,12 @@ const Cart = () => {
     return 30000;
   }, [shippingEligible, totalPrice]);
 
-  const discountRate = paymentMethod === "bank" ? 0.05 : 0;
+  const TRANSFER_DISCOUNT_CODE = "CHUYENKHOAN";
+  const TRANSFER_DISCOUNT_PERCENT = 5;
+  const applyTransferDiscount = paymentMethod === "bank";
+  const discountRate = applyTransferDiscount
+    ? TRANSFER_DISCOUNT_PERCENT / 100
+    : 0;
   const discountAmount = useMemo(
     () => totalPrice * discountRate,
     [totalPrice, discountRate]
@@ -179,6 +260,15 @@ const Cart = () => {
     setItems(next);
   };
 
+  const handleSelectTable = (value) => {
+    const table = tableMap.get(value);
+    setCustomer((prev) => ({
+      ...prev,
+      tableId: value,
+      tableNumber: table?.number?.toString() || "",
+    }));
+  };
+
   const handleOrder = () => {
     // Validation
     if (!customer.name || !customer.phone) {
@@ -187,7 +277,12 @@ const Cart = () => {
     }
 
     if (orderType === "dine-in") {
-      if (!customer.date || !customer.time || !customer.people || !customer.tableNumber) {
+      if (
+        !customer.date ||
+        !customer.time ||
+        !customer.people ||
+        !customer.tableId
+      ) {
         showError("Vui lòng điền đầy đủ thông tin đặt bàn!");
         return;
       }
@@ -198,38 +293,54 @@ const Cart = () => {
       }
     }
 
-    fetch(`${API_BASE_URL}/api/order/create_payment_url`, {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
+    const token = localStorage.getItem("token");
+    const headers = {
+      "Content-Type": "application/json",
+      ...(token ? { Authorization: `Bearer ${token}` } : {}),
+    };
+
+    const payload = {
+      bankCode: "",
+      name: customer.name,
+      phone: customer.phone,
+      date: customer.date || new Date().toISOString().split("T")[0],
+      time: customer.time || new Date().toTimeString().split(" ")[0].slice(0, 5),
+      ship: {
+        isShip: orderType === "takeaway",
+        address: orderType === "takeaway" ? customer.deliveryAddress : "",
       },
-      body: JSON.stringify({
-        bankCode: "",
-        // Thông tin liên hệ
-        name: customer.name,
-        phone: customer.phone,
+      orderType,
+      tableNumber:
+        orderType === "dine-in" ? customer.tableNumber?.toString() : undefined,
+      tableId: orderType === "dine-in" ? customer.tableId : undefined,
+      deliveryAddress:
+        orderType === "takeaway" ? customer.deliveryAddress : undefined,
+      deliveryEmail:
+        orderType === "takeaway" ? customer.email || undefined : undefined,
+      people: orderType === "dine-in" ? customer.people : 1,
+      note: customer.note,
+      selectedDishes: items.map((dish) => ({
+        dishId: dish._id,
+        quantity: dish.quantity || 1,
+      })),
+      discount: applyTransferDiscount ? TRANSFER_DISCOUNT_PERCENT : 0,
+      discountCode: applyTransferDiscount ? TRANSFER_DISCOUNT_CODE : undefined,
+      payment: {
+        paymentMethod,
+      },
+      totalAmount: finalTotal,
+      language: "vn",
+    };
 
-        // Thông tin ngày ăn / ngày giao hàng
-        date: customer.date || new Date().toISOString().split("T")[0],
-        time: customer.time || new Date().toTimeString().split(" ")[0].slice(0, 5),
+    const isOnlinePayment = paymentMethod === "bank";
+    const requestUrl = isOnlinePayment
+      ? `${API_BASE_URL}/api/order/create_payment_url`
+      : `${API_BASE_URL}/api/bookings`;
 
-        ship: {
-          isShip: orderType === "takeaway",
-          address: orderType === "takeaway" ? customer.deliveryAddress : "",
-        },
-
-        people: orderType === "dine-in" ? customer.people : 1,
-        note: customer.note,
-        selectedDishes: items.map((dish) => ({
-          dishId: dish._id,
-          quantity: dish.quantity || 1,
-        })),
-        payment: {
-          paymentMethod: paymentMethod,
-        },
-        totalAmount: finalTotal,
-        language: "vn",
-      }),
+    fetch(requestUrl, {
+      method: "POST",
+      headers,
+      body: JSON.stringify(payload),
     })
       .then(async (r) => {
         const contentType = r.headers.get("content-type") || "";
@@ -243,7 +354,16 @@ const Cart = () => {
         return r.text();
       })
       .then((data) => {
-        if (data.data && typeof data.data === "object" && data.data.paymentUrl) {
+        let bookingCreated = false;
+
+        if (!isOnlinePayment) {
+          showSuccess("Đặt món thành công! Chúng tôi sẽ xác nhận trong ít phút.");
+          bookingCreated = true;
+        } else if (
+          data.data &&
+          typeof data.data === "object" &&
+          data.data.paymentUrl
+        ) {
           const { paymentUrl, payment } = data.data;
           //! cách hiển thị 1: Chuyển hướng trang
           // nhờ be redirect về đúng trang sau thanh toán
@@ -261,30 +381,54 @@ const Cart = () => {
           //! cách hiển thị 2: Mở VNPAY trong popup
           let paymentWindow = globalThis.open(paymentUrl, "_blank");
 
+          // Kiểm tra nếu popup bị chặn
+          if (!paymentWindow) {
+            showError("Popup bị chặn! Vui lòng cho phép popup và thử lại.");
+            return;
+          }
+
           // Poll trạng thái đơn hàng mỗi 2s
           const interval = setInterval(async () => {
             // không cho tắt trừ khi hủy
-            if (paymentWindow.closed) {
+            if (paymentWindow && paymentWindow.closed) {
               paymentWindow = globalThis.open(paymentUrl, "_blank");
             }
 
-            const res = await fetch(
-              `${API_BASE_URL}/api/order/order_status/${payment.orderId}`
-            ).then((r) => r.json());
-            if (res.data.payment.paidAt !== null) {
-              console.log("payment status:", res.data.payment);
+            // Kiểm tra nếu paymentWindow vẫn null
+            if (!paymentWindow) {
               clearInterval(interval);
-              paymentWindow.close();
+              return;
+            }
+
+            try {
+              const res = await fetch(
+                `${API_BASE_URL}/api/order/order_status/${payment.orderId}`
+              ).then((r) => r.json());
+              if (res.data?.payment?.paidAt !== null) {
+                console.log("payment status:", res.data.payment);
+                clearInterval(interval);
+                if (paymentWindow && !paymentWindow.closed) {
+                  paymentWindow.close();
+                }
+              }
+            } catch (err) {
+              console.error("Error checking payment status:", err);
             }
           }, 2000);
 
           //todo chuyển trang hiển thị kết quả đặt món, biên lai
+          bookingCreated = true;
         } else {
           showError("Không lấy được URL thanh toán!");
         }
 
-        clearCart();
-        setItems([]);
+        if (bookingCreated) {
+          clearCart();
+          setItems([]);
+          setCustomer(createInitialCustomer());
+          setOrderType("dine-in");
+          setPaymentMethod("bank");
+        }
       })
       .catch((err) => {
         console.error(err);
@@ -350,9 +494,27 @@ const Cart = () => {
                     {/* Content column */}
                     <div className="flex-1">
                       <h4 className="font-DM_sans font-bold text-lg">{i.name}</h4>
-                      <p className="text-blue-600 font-DM_sans font-bold">
-                        {Number(i.price).toLocaleString("vi-VN")} đ
-                      </p>
+                      {i.discountPercent > 0 ? (
+                        <div className="flex items-center gap-2">
+                          <span className="text-slate-400 line-through text-sm">
+                            {Number(i.price).toLocaleString("vi-VN")} đ
+                          </span>
+                          <span className="text-red-600 font-DM_sans font-bold">
+                            {(
+                              Number(i.price) *
+                              (1 - (Number(i.discountPercent) || 0) / 100)
+                            ).toLocaleString("vi-VN")}{" "}
+                            đ
+                          </span>
+                          <span className="px-2 py-0.5 rounded-full bg-red-500 text-white text-xs font-bold">
+                            -{i.discountPercent}%
+                          </span>
+                        </div>
+                      ) : (
+                        <p className="text-blue-600 font-DM_sans font-bold">
+                          {Number(i.price).toLocaleString("vi-VN")} đ
+                        </p>
+                      )}
 
                       {/* Mobile controls under name/price */}
                       <div className="mt-2 flex items-center gap-2 sm:hidden">
@@ -557,28 +719,24 @@ const Cart = () => {
                           Số bàn *
                         </label>
                         {customer.date && customer.time && customer.people ? (
+                          tableOptions.length > 0 ? (
                           <>
                             <DropdownSelect
                               options={tableOptions}
-                              value={customer.tableNumber}
-                              onChange={(value) =>
-                                setCustomer((p) => ({ ...p, tableNumber: value }))
-                              }
+                                value={customer.tableId}
+                                onChange={handleSelectTable}
                               placeholder="Chọn bàn"
                               className="w-full"
                             />
-                            {availableTables.length > 0 && (
                               <p className="mt-1 text-xs text-emerald-600">
-                                ✓ Có {availableTables.length} bàn trống phù hợp
+                                ✓ Có {tableOptions.length} bàn trống phù hợp
                               </p>
-                            )}
-                            {availableTables.length === 0 && (
-                              <p className="mt-1 text-xs text-red-500">
-                                ⚠ Không có bàn trống cho {customer.people} người vào
-                                thời điểm này
-                              </p>
-                            )}
-                          </>
+                            </>
+                          ) : (
+                            <div className="w-full h-10 border-2 rounded-lg px-3 bg-amber-50 text-amber-700 text-sm flex items-center">
+                              Không có bàn trống cho {customer.people} người vào thời điểm này
+                            </div>
+                          )
                         ) : (
                           <div className="w-full h-10 border-2 rounded-lg px-3 bg-slate-50 text-slate-500 text-sm flex items-center">
                             Vui lòng chọn ngày, giờ và số người trước
@@ -691,6 +849,9 @@ const Cart = () => {
                         <p className="text-sm text-slate-600">
                           Giảm 5% trên tổng giá trị đơn hàng khi thanh toán trước.
                         </p>
+                        <p className="text-xs text-blue-500 mt-1">
+                          Áp dụng mã {TRANSFER_DISCOUNT_CODE}.
+                        </p>
                       </div>
                     </label>
 
@@ -727,7 +888,9 @@ const Cart = () => {
                   </div>
                   {discountAmount > 0 && (
                     <div className="flex justify-between text-sm text-emerald-300">
-                      <span>Giảm 5% (chuyển khoản)</span>
+                      <span>
+                        Giảm {TRANSFER_DISCOUNT_PERCENT}% (mã {TRANSFER_DISCOUNT_CODE})
+                      </span>
                       <span>-{discountAmount.toLocaleString("vi-VN")} đ</span>
                     </div>
                   )}

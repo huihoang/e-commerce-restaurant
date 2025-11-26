@@ -1,27 +1,38 @@
-import { useState, useMemo } from "react";
+import { useEffect, useMemo, useState } from "react";
+import axios from "axios";
 
 const DiscountCodeSection = ({ booking, onSelectDiscount, onRemoveDiscount }) => {
   const [showDiscountList, setShowDiscountList] = useState(false);
   const [searchDiscount, setSearchDiscount] = useState("");
+  const [discounts, setDiscounts] = useState([]);
+  const [loading, setLoading] = useState(false);
+  const API_BASE_URL =
+    import.meta.env.VITE_API_BASE_URL || "http://localhost:5000";
 
-  const mockDiscountCodes = [
-    { code: "WELCOME10", discount: 10, description: "Giảm 10% cho khách hàng mới" },
-    { code: "SAVE20", discount: 20, description: "Giảm 20% cho đơn hàng trên 500k" },
-    { code: "WEEKEND15", discount: 15, description: "Giảm 15% vào cuối tuần" },
-    { code: "VIP25", discount: 25, description: "Giảm 25% cho thành viên VIP" },
-    { code: "HAPPY30", discount: 30, description: "Giảm 30% cho đơn hàng lớn" },
-    { code: "FIRST5", discount: 5, description: "Giảm 5% cho đơn đầu tiên" },
-    { code: "BIRTHDAY20", discount: 20, description: "Giảm 20% nhân dịp sinh nhật" },
-    { code: "SUMMER15", discount: 15, description: "Giảm 15% mùa hè" },
-  ];
+  useEffect(() => {
+    const fetchDiscounts = async () => {
+      try {
+        setLoading(true);
+        const res = await axios.get(`${API_BASE_URL}/api/discounts/active`);
+        setDiscounts(res.data || []);
+      } catch (err) {
+        console.error("❌ Lỗi khi lấy mã giảm giá:", err.message);
+      } finally {
+        setLoading(false);
+      }
+    };
+    fetchDiscounts();
+  }, [API_BASE_URL]);
 
-  const filteredDiscountCodes = useMemo(() => {
-    return mockDiscountCodes.filter(
+  const filteredDiscounts = useMemo(() => {
+    return discounts.filter(
       (code) =>
         code.code.toLowerCase().includes(searchDiscount.toLowerCase()) ||
-        code.description.toLowerCase().includes(searchDiscount.toLowerCase())
+        (code.description || "")
+          .toLowerCase()
+          .includes(searchDiscount.toLowerCase())
     );
-  }, [searchDiscount]);
+  }, [discounts, searchDiscount]);
 
   const handleSelect = (code) => {
     onSelectDiscount(code);
@@ -77,26 +88,44 @@ const DiscountCodeSection = ({ booking, onSelectDiscount, onRemoveDiscount }) =>
           </div>
           <div className="max-h-[200px] overflow-y-auto">
             <div className="space-y-2">
-              {filteredDiscountCodes.length === 0 ? (
+              {loading ? (
+                <p className="text-center text-sm text-slate-500">
+                  Đang tải mã giảm giá...
+                </p>
+              ) : filteredDiscounts.length === 0 ? (
                 <p className="text-center text-sm text-slate-500">
                   Không tìm thấy mã giảm giá
                 </p>
               ) : (
-                filteredDiscountCodes.map((code) => (
+                filteredDiscounts.map((code) => (
                   <button
-                    key={code.code}
+                    key={code._id || code.code}
                     type="button"
-                    onClick={() => handleSelect(code)}
+                    onClick={() =>
+                      handleSelect({
+                        code: code.code,
+                        discount: code.discountPercent,
+                        description: code.description,
+                      })
+                    }
                     className="w-full flex items-center justify-between rounded-xl border-2 border-slate-200 bg-white p-3 text-left transition hover:border-amber-300 hover:shadow-md"
                   >
                     <div>
                       <p className="font-semibold text-slate-900">
                         🎟️ {code.code}
                       </p>
-                      <p className="text-xs text-slate-600">{code.description}</p>
+                      <p className="text-xs whitespace-pre-line text-slate-600">
+                        {code.description || "Không có mô tả"}
+                      </p>
+                      <p className="text-xs text-slate-400">
+                        HSD:{" "}
+                        {code.endDate
+                          ? new Date(code.endDate).toLocaleDateString("vi-VN")
+                          : "Không giới hạn"}
+                      </p>
                     </div>
                     <span className="rounded-full bg-amber-100 px-3 py-1 text-sm font-bold text-amber-700">
-                      -{code.discount}%
+                      -{code.discountPercent}%
                     </span>
                   </button>
                 ))

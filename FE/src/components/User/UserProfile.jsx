@@ -18,37 +18,6 @@ const UserProfile = () => {
   const API_BASE_URL =
     import.meta.env.VITE_API_BASE_URL || "http://localhost:5000";
 
-  // ==================== Mock Data Generator ====================
-  const generateMockData = (userData) => {
-    const mockNames = [
-      "Nguyễn Văn An",
-      "Trần Thị Bình",
-      "Lê Văn Cường",
-      "Phạm Thị Dung",
-      "Hoàng Văn Em",
-    ];
-    const mockPhones = [
-      "0901234567",
-      "0912345678",
-      "0923456789",
-      "0934567890",
-      "0945678901",
-    ];
-
-    return {
-      ...userData,
-      fullName: mockNames[Math.floor(Math.random() * mockNames.length)],
-      birthday: new Date(
-        1990 + Math.floor(Math.random() * 20),
-        Math.floor(Math.random() * 12),
-        Math.floor(Math.random() * 28) + 1
-      )
-        .toISOString()
-        .split("T")[0],
-      phone: mockPhones[Math.floor(Math.random() * mockPhones.length)],
-    };
-  };
-
   const fetchUser = useCallback(async () => {
     try {
       setLoading(true);
@@ -57,15 +26,18 @@ const UserProfile = () => {
         headers: { Authorization: `Bearer ${token}` },
       });
 
-      // Add mock data
-      const userWithMock = generateMockData(res.data);
-      setUser(userWithMock);
+      const normalizedUser = {
+        ...res.data,
+      };
+      setUser(normalizedUser);
       setFormData({
-        username: userWithMock.username,
-        email: userWithMock.email,
-        fullName: userWithMock.fullName || "",
-        birthday: userWithMock.birthday || "",
-        phone: userWithMock.phone || "",
+        username: normalizedUser.username || "",
+        email: normalizedUser.email || "",
+        fullName: normalizedUser.fullName || "",
+        birthday: normalizedUser.birthday
+          ? new Date(normalizedUser.birthday).toISOString().split("T")[0]
+          : "",
+        phone: normalizedUser.phone || "",
       });
     } catch (err) {
       console.error("Lỗi khi lấy người dùng:", err);
@@ -116,11 +88,16 @@ const UserProfile = () => {
   };
 
   const handleCancel = () => {
+    if (!user) {
+      return;
+    }
     setFormData({
-      username: user.username,
-      email: user.email,
+      username: user.username || "",
+      email: user.email || "",
       fullName: user.fullName || "",
-      birthday: user.birthday || "",
+      birthday: user.birthday
+        ? new Date(user.birthday).toISOString().split("T")[0]
+        : "",
       phone: user.phone || "",
     });
     setIsEditing(false);
@@ -146,7 +123,12 @@ const UserProfile = () => {
   }
 
   const role = localStorage.getItem("role") || "user";
-  const roleLabel = role === "admin" ? "Quản trị viên" : "Nhân viên";
+  const roleLabelMap = {
+    admin: "Quản trị viên",
+    staff: "Nhân viên",
+    user: "Người dùng",
+  };
+  const roleLabel = roleLabelMap[role] || "Khách";
 
   return (
     <div>
@@ -294,7 +276,9 @@ const UserProfile = () => {
                   name="birthday"
                   value={formData.birthday}
                   onChange={handleChange}
-                  className="w-full rounded-xl border border-slate-200 bg-white px-4 py-3 text-sm shadow-inner transition focus:border-green-500 focus:outline-none focus:ring-2 focus:ring-green-200"
+                  className="w-full rounded-xl border border-slate-200 bg-white px-4 py-3 text-sm shadow-inner transition focus:border-green-500 focus:outline-none focus:ring-2 focus:ring-green-200 cursor-pointer"
+                  onClick={(e) => e.target.showPicker?.()}
+                  onFocus={(e) => e.target.showPicker?.()}
                 />
               ) : (
                 <div className="rounded-xl border border-slate-200 bg-slate-50 px-4 py-3">

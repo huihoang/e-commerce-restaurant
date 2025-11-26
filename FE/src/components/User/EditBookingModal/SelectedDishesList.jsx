@@ -1,3 +1,5 @@
+import PropTypes from "prop-types";
+
 const SelectedDishesList = ({
   selectedDishes,
   totalAmounts,
@@ -16,12 +18,18 @@ const SelectedDishesList = ({
         </p>
       ) : (
         <div className="space-y-3">
-          {selectedDishes.map((dishObj) => {
-            const dishId = dishObj.dishId._id;
-            const dish = dishObj.dishId;
+          {selectedDishes.map((dishObj, index) => {
+            const dishRef = dishObj.dishId;
+            const dishId =
+              (typeof dishRef === "object" && dishRef?._id) || dishRef || "";
+            const dish =
+              typeof dishRef === "object"
+                ? dishRef
+                : { name: "Món ăn", price: 0, image: "" };
+            const safeKey = dishId || `dish-${index}`;
             return (
               <div
-                key={dishId}
+                key={safeKey}
                 className="flex items-center justify-between rounded-xl bg-white p-3 shadow-sm"
               >
                 <div className="flex items-center gap-3">
@@ -42,7 +50,10 @@ const SelectedDishesList = ({
                     <button
                       type="button"
                       onClick={() =>
-                        onQuantityChange(dishId, Math.max(1, dishObj.quantity - 1))
+                        onQuantityChange(
+                          dishId || index,
+                          Math.max(1, dishObj.quantity - 1)
+                        )
                       }
                       className="h-8 w-8 rounded-lg bg-slate-100 text-slate-700 transition hover:bg-slate-200"
                     >
@@ -52,13 +63,18 @@ const SelectedDishesList = ({
                       type="number"
                       min="1"
                       value={dishObj.quantity}
-                      onChange={(e) => onQuantityChange(dishId, e.target.value)}
+                      onChange={(e) =>
+                        onQuantityChange(dishId || index, e.target.value)
+                      }
                       className="h-8 w-16 rounded-lg border border-slate-200 text-center text-sm font-semibold"
                     />
                     <button
                       type="button"
                       onClick={() =>
-                        onQuantityChange(dishId, dishObj.quantity + 1)
+                        onQuantityChange(
+                          dishId || index,
+                          dishObj.quantity + 1
+                        )
                       }
                       className="h-8 w-8 rounded-lg bg-slate-100 text-slate-700 transition hover:bg-slate-200"
                     >
@@ -67,7 +83,7 @@ const SelectedDishesList = ({
                   </div>
                   <button
                     type="button"
-                    onClick={() => onRemoveDish(dishId)}
+                    onClick={() => onRemoveDish(dishId || index)}
                     className="rounded-lg bg-red-100 px-3 py-1.5 text-sm font-semibold text-red-600 transition hover:bg-red-200"
                   >
                     🗑️ Xóa
@@ -104,6 +120,32 @@ const SelectedDishesList = ({
       </div>
     </div>
   );
+};
+
+SelectedDishesList.propTypes = {
+  selectedDishes: PropTypes.arrayOf(
+    PropTypes.shape({
+      dishId: PropTypes.oneOfType([
+        PropTypes.string,
+        PropTypes.number,
+        PropTypes.shape({
+          _id: PropTypes.string,
+          name: PropTypes.string,
+          price: PropTypes.oneOfType([PropTypes.number, PropTypes.string]),
+          image: PropTypes.string,
+        }),
+      ]),
+      quantity: PropTypes.number,
+    })
+  ).isRequired,
+  totalAmounts: PropTypes.shape({
+    subtotal: PropTypes.number.isRequired,
+    discountAmount: PropTypes.number.isRequired,
+    total: PropTypes.number.isRequired,
+  }).isRequired,
+  discount: PropTypes.number.isRequired,
+  onQuantityChange: PropTypes.func.isRequired,
+  onRemoveDish: PropTypes.func.isRequired,
 };
 
 export default SelectedDishesList;

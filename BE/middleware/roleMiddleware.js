@@ -1,10 +1,10 @@
-function requireRole(role) {
+function requireRole(...roles) {
   return (req, res, next) => {
-    if (req.user.role !== role) {
-      return res.status(403).json({ message: 'Forbidden: Admin only' })
+    if (!req.user?.role || !roles.includes(req.user.role)) {
+      return res.status(403).json({ message: 'Forbidden: insufficient role' });
     }
-    next()
-  }
+    next();
+  };
 }
 
-module.exports = requireRole
+module.exports = requireRole;

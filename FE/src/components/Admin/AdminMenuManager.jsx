@@ -2,6 +2,7 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import axios from "axios";
 import DropdownSelect from "@/components/common/DropdownSelect";
 import Pagination from "@/components/common/Pagination";
+import ConfirmModal from "@/components/common/ConfirmModal";
 import { useNotification } from "@/contexts/NotificationContext";
 
 const categoryColorMap = {
@@ -16,12 +17,14 @@ const defaultCategories = ["Bữa Sáng", "Bữa Trưa", "Đồ Uống", "Tráng
 const AdminMenuManager = () => {
   const { showSuccess, showError } = useNotification();
   const [menuItems, setMenuItems] = useState([]);
+  const [categories, setCategories] = useState([]);
   const [form, setForm] = useState({
     name: "",
     price: "",
     info: "",
     image: "",
     category: "",
+    discountPercent: 0,
   });
   const [editId, setEditId] = useState(null);
   const [isModalOpen, setIsModalOpen] = useState(false);
@@ -30,6 +33,10 @@ const AdminMenuManager = () => {
   const [sortOption, setSortOption] = useState("newest");
   const [currentPage, setCurrentPage] = useState(1);
   const ITEMS_PER_PAGE = 8;
+  const [confirmModal, setConfirmModal] = useState({
+    open: false,
+    menuId: null,
+  });
 
   const API_BASE_URL =
     import.meta.env.VITE_API_BASE_URL || "http://localhost:5000";
@@ -46,9 +53,19 @@ const AdminMenuManager = () => {
     }
   }, [API_BASE_URL]);
 
+  const fetchCategories = useCallback(async () => {
+    try {
+      const res = await axios.get(`${API_BASE_URL}/api/categories`);
+      setCategories(res.data || []);
+    } catch (err) {
+      console.error("❌ Lỗi khi fetch categories:", err.message);
+    }
+  }, [API_BASE_URL]);
+
   useEffect(() => {
     fetchMenu();
-  }, [fetchMenu]);
+    fetchCategories();
+  }, [fetchMenu, fetchCategories]);
 
   const handleChange = (e) => {
     const { name, value } = e.target;
@@ -58,12 +75,16 @@ const AdminMenuManager = () => {
   const handleSubmit = async (e) => {
     e.preventDefault();
     try {
+      if (!form.category) {
+        showError("Vui lòng chọn danh mục trước khi lưu món.");
+        return;
+      }
       if (editId) {
         await axios.put(`${API_BASE_URL}/api/menus/${editId}`, form);
       } else {
         await axios.post(`${API_BASE_URL}/api/menus`, form);
       }
-      setForm({ name: "", price: "", info: "", image: "", category: "" });
+      setForm({ name: "", price: "", info: "", image: "", category: "", discountPercent: 0 });
       setEditId(null);
       setIsModalOpen(false);
       showSuccess(editId ? "Cập nhật món thành công!" : "Thêm món mới thành công!");
@@ -81,13 +102,13 @@ const AdminMenuManager = () => {
       info: item.info,
       image: item.image,
       category: item.category,
+      discountPercent: item.discountPercent || 0,
     });
     setEditId(item._id);
     setIsModalOpen(true);
   };
 
   const handleDelete = async (id) => {
-    if (globalThis.confirm("Bạn có chắc chắn muốn xoá món này không?")) {
       try {
         await axios.delete(`${API_BASE_URL}/api/menus/${id}`);
         showSuccess("Xóa món thành công!");
@@ -96,7 +117,20 @@ const AdminMenuManager = () => {
         console.error("❌ Lỗi khi xoá món:", err.message);
         showError("Lỗi khi xóa món. Vui lòng thử lại!");
       }
-    }
+  };
+
+  const openDeleteModal = (menuId) => {
+    setConfirmModal({ open: true, menuId });
+  };
+
+  const closeDeleteModal = () => {
+    setConfirmModal({ open: false, menuId: null });
+  };
+
+  const confirmDeleteMenu = async () => {
+    if (!confirmModal.menuId) return;
+    await handleDelete(confirmModal.menuId);
+    closeDeleteModal();
   };
 
   const openModal = () => {
@@ -109,9 +143,7 @@ const AdminMenuManager = () => {
     setIsModalOpen(false);
   };
 
-  const categoryOptions = useMemo(() => {
-    const unique = new Set(defaultCategories);
-    menuItems.forEach((item) => item.category && unique.add(item.category));
+  const categoryFilterOptions = useMemo(() => {
     return [
       {
         label: "Tất cả danh mục",
@@ -119,14 +151,30 @@ const AdminMenuManager = () => {
         badge: "bg-slate-100 text-slate-600",
         badgeLabel: "ALL",
       },
-      ...Array.from(unique).map((cat) => ({
-        label: cat,
-        value: cat,
-        badge: categoryColorMap[cat] || "bg-blue-100 text-blue-700",
-        badgeLabel: cat.slice(0, 3).toUpperCase(),
+      ...categories.map((cat) => ({
+        label: cat.name,
+        value: cat.name,
+        badge: categoryColorMap[cat.name] || "bg-blue-100 text-blue-700",
+        badgeLabel: cat.name.slice(0, 3).toUpperCase(),
       })),
     ];
-  }, [menuItems]);
+  }, [categories]);
+
+  const categorySelectOptions = useMemo(() => {
+    const map = new Map();
+    categories.forEach((cat) => {
+      map.set(cat.name, { label: cat.name, value: cat.name });
+    });
+    menuItems.forEach((item) => {
+      if (item.category && !map.has(item.category)) {
+        map.set(item.category, {
+          label: `${item.category} (cũ)`,
+          value: item.category,
+        });
+      }
+    });
+    return Array.from(map.values());
+  }, [categories, menuItems]);
 
   const sortOptions = [
     { label: "Mới nhất", value: "newest" },
@@ -185,6 +233,7 @@ const AdminMenuManager = () => {
   }, [filteredMenu, currentPage]);
 
   return (
+    <>
     <div className="space-y-6">
       <section className="rounded-3xl bg-gradient-to-r from-orange-500 via-red-500 to-pink-500 p-6 text-white shadow-2xl">
         <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
@@ -257,7 +306,7 @@ const AdminMenuManager = () => {
               </span>
             </div>
             <DropdownSelect
-              options={categoryOptions}
+              options={categoryFilterOptions}
               value={categoryFilter}
               onChange={setCategoryFilter}
               placeholder="Danh mục"
@@ -331,7 +380,7 @@ const AdminMenuManager = () => {
                     ✏️ Sửa
                 </button>
                 <button
-                  onClick={() => handleDelete(item._id)}
+                  onClick={() => openDeleteModal(item._id)}
                     className="flex-1 rounded-full bg-rose-600/10 px-4 py-2 text-sm font-semibold text-rose-600 transition hover:bg-rose-600 hover:text-white"
                 >
                     🗑 Xoá
@@ -351,8 +400,9 @@ const AdminMenuManager = () => {
       </div>
       </section>
 
+    </div>
       {isModalOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm">
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm p-0">
           <div className="w-full max-w-2xl rounded-3xl bg-white p-6 shadow-2xl sm:p-8">
             <div className="flex items-center justify-between">
               <h3 className="text-2xl font-semibold text-slate-900">
@@ -395,6 +445,24 @@ const AdminMenuManager = () => {
                     className="mt-1 w-full rounded-2xl border border-slate-200 px-4 py-2 text-sm text-slate-800 shadow-inner focus:border-orange-500 focus:outline-none"
               />
                 </div>
+                <div>
+                  <label className="text-xs font-semibold uppercase tracking-wide text-slate-500">
+                    Giảm giá (%)
+                  </label>
+              <input
+                name="discountPercent"
+                    type="number"
+                    min="0"
+                    max="100"
+                    placeholder="Ví dụ: 10 (10%)"
+                value={form.discountPercent}
+                onChange={handleChange}
+                    className="mt-1 w-full rounded-2xl border border-slate-200 px-4 py-2 text-sm text-slate-800 shadow-inner focus:border-orange-500 focus:outline-none"
+              />
+                  <p className="mt-1 text-xs text-slate-500">
+                    Nhập phần trăm giảm giá (0-100). Để trống hoặc 0 = không giảm giá.
+                  </p>
+                </div>
               </div>
               <div>
                 <label className="text-xs font-semibold uppercase tracking-wide text-slate-500">
@@ -421,33 +489,25 @@ const AdminMenuManager = () => {
                   className="mt-1 w-full rounded-2xl border border-slate-200 px-4 py-2 text-sm text-slate-800 shadow-inner focus:border-orange-500 focus:outline-none"
                 />
               </div>
-              <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
                 <div>
                   <label className="text-xs font-semibold uppercase tracking-wide text-slate-500">
                     Danh mục
                   </label>
+                {categorySelectOptions.length === 0 ? (
+                  <div className="mt-1 rounded-2xl border border-dashed border-slate-300 px-4 py-2 text-sm text-slate-500">
+                    Chưa có danh mục. Hãy tạo tại trang Quản Lý Danh Mục trước.
+                  </div>
+                ) : (
                   <DropdownSelect
-                    options={categoryOptions.slice(1)}
+                    options={categorySelectOptions}
                     value={form.category}
                     onChange={(value) =>
                       setForm((prev) => ({ ...prev, category: value }))
                     }
-                    placeholder="Chọn danh mục"
+                    placeholder="Vui lòng chọn danh mục"
                     className="mt-1"
                   />
-                </div>
-                <div>
-                  <label className="text-xs font-semibold uppercase tracking-wide text-slate-500">
-                    Hoặc nhập danh mục mới
-                  </label>
-                  <input
-                name="category"
-                    placeholder="Nhập danh mục"
-                value={form.category}
-                onChange={handleChange}
-                    className="mt-1 w-full rounded-2xl border border-dashed border-slate-300 px-4 py-2 text-sm text-slate-800 shadow-inner focus:border-orange-500 focus:outline-none"
-                  />
-                </div>
+                )}
               </div>
               <div className="flex flex-col gap-3 sm:flex-row sm:justify-end">
                 <button
@@ -468,7 +528,16 @@ const AdminMenuManager = () => {
           </div>
         </div>
       )}
-    </div>
+      <ConfirmModal
+        open={confirmModal.open}
+        title="Xóa món ăn"
+        message="Bạn có chắc chắn muốn xoá món ăn này khỏi thực đơn?"
+        confirmLabel="Xoá"
+        cancelLabel="Huỷ"
+        onConfirm={confirmDeleteMenu}
+        onCancel={closeDeleteModal}
+      />
+    </>
   );
 };
 

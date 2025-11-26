@@ -6,6 +6,9 @@ const bookingController = require('../controllers/bookingController')
 
 const router = express.Router();
 
+// ==================== Lấy danh sách đặt bàn (GET)
+router.get("/", authenticateTokenOptional, bookingController.getAllBookings);
+
 // ==================== Đặt bàn (POST)
 router.post("/", authenticateTokenOptional, bookingController.createBooking);
 

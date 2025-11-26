@@ -3,6 +3,9 @@ import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { useNotification } from "@/contexts/NotificationContext";
 
+const isAdminRole = (role) => role === "admin" || role === "staff";
+const getHomePathByRole = (role) => (isAdminRole(role) ? "/admin" : "/user");
+
 const Auth = ({ setIsLoggedIn, setRole, isLoggedIn, role }) => {
   const { showSuccess, showError } = useNotification();
   // ==================== All Hooks
@@ -16,7 +19,7 @@ const Auth = ({ setIsLoggedIn, setRole, isLoggedIn, role }) => {
 
   useEffect(() => {
     if (isLoggedIn && role) {
-      navigate(role === "admin" ? "/admin" : "/user", { replace: true });
+      navigate(getHomePathByRole(role), { replace: true });
     }
   }, [isLoggedIn, role, navigate]);
 
@@ -37,7 +40,7 @@ const Auth = ({ setIsLoggedIn, setRole, isLoggedIn, role }) => {
       setRole(data.role);
       setForm("logout");
       showSuccess("Đăng nhập thành công!");
-      navigate(data.role === "admin" ? "/admin" : "/user", { replace: true });
+      navigate(getHomePathByRole(data.role), { replace: true });
     } else {
       showError(data.message || "Đăng nhập thất bại!");
     }

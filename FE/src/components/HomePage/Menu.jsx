@@ -1,23 +1,23 @@
 // ==================== All Import
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { addToCart } from "@/utils/cart";
+
+const FALLBACK_CATEGORIES = ["Bữa Sáng", "Bữa Trưa", "Đồ Uống", "Tráng Miệng"];
+const categoryColorMap = {
+  "Bữa Sáng": "bg-amber-400/90",
+  "Bữa Trưa": "bg-emerald-500/90",
+  "Đồ Uống": "bg-cyan-500/90",
+  "Tráng Miệng": "bg-rose-500/90",
+};
 
 const Menu = () => {
   // ==================== All useState
   const [foodData, setFoodData] = useState([]);
   const [filteredData, setFilteredData] = useState([]);
   const [selectedCategory, setSelectedCategory] = useState("Tất cả");
+  const [categories, setCategories] = useState([]);
   const API_BASE_URL =
     import.meta.env.VITE_API_BASE_URL || "http://localhost:5000";
-
-  // ==================== All Categories
-  const categories = [
-    "Tất cả",
-    "Bữa Sáng",
-    "Bữa Trưa",
-    "Đồ Uống",
-    "Tráng Miệng",
-  ];
 
   const mockBadges = ["Best Seller", "Chef's Pick", "Ưu đãi", "Món mới"];
   const getBadge = (index) => mockBadges[index % mockBadges.length];
@@ -39,7 +39,65 @@ const Menu = () => {
         setFilteredData(json);
       })
       .catch((err) => console.error("Lỗi fetch:", err));
-  }, []);
+  }, [API_BASE_URL]);
+
+  useEffect(() => {
+    fetch(`${API_BASE_URL}/api/categories`)
+      .then((response) => response.json())
+      .then((json) => {
+        setCategories(Array.isArray(json) ? json : []);
+      })
+      .catch((err) => console.error("Lỗi fetch categories:", err));
+  }, [API_BASE_URL]);
+
+  const categoryMap = useMemo(() => {
+    const map = new Map();
+    categories.forEach((cat) => {
+      if (!cat) return;
+      const name = cat.name || cat.slug;
+      if (cat._id && name) {
+        map.set(cat._id, name);
+      }
+      if (name) {
+        map.set(name, name);
+      }
+    });
+    FALLBACK_CATEGORIES.forEach((name) => {
+      if (!map.has(name)) {
+        map.set(name, name);
+      }
+    });
+    return map;
+  }, [categories]);
+
+  const categoryButtons = useMemo(() => {
+    const names = categories
+      .filter((cat) => cat.isActive !== false)
+      .map((cat) => cat.name)
+      .filter(Boolean);
+    const uniqueNames = Array.from(
+      new Set(names.length > 0 ? names : FALLBACK_CATEGORIES)
+    );
+    return ["Tất cả", ...uniqueNames];
+  }, [categories]);
+
+  useEffect(() => {
+    if (!categoryButtons.includes(selectedCategory)) {
+      setSelectedCategory("Tất cả");
+      setFilteredData(foodData);
+    }
+  }, [categoryButtons, selectedCategory, foodData]);
+
+  const getCategoryLabel = (value) => {
+    if (!value) return "Chưa phân loại";
+    if (typeof value === "object") {
+      return value.name || categoryMap.get(value._id) || "Chưa phân loại";
+    }
+    return categoryMap.get(value) || value || "Chưa phân loại";
+  };
+
+  const getCategoryBadgeClass = (label) =>
+    categoryColorMap[label] || "bg-slate-900/80";
 
   // ==================== Handle Filter
   const handleFilter = (category) => {
@@ -47,7 +105,10 @@ const Menu = () => {
     if (category === "Tất cả") {
       setFilteredData(foodData);
     } else {
-      const filtered = foodData.filter((item) => item.category === category);
+      const filtered = foodData.filter((item) => {
+        const label = getCategoryLabel(item.category);
+        return label === category;
+      });
       setFilteredData(filtered);
     }
   };
@@ -66,7 +127,7 @@ const Menu = () => {
 
         {/* ================= Category Buttons ================= */}
         <ul className="flex flex-wrap justify-center gap-4 mt-[50px] font-DM_sans font-bold text-base text-slate-700">
-          {categories.map((cat) => (
+          {categoryButtons.map((cat) => (
             <button
               key={cat}
               onClick={() => handleFilter(cat)}
@@ -91,8 +152,17 @@ const Menu = () => {
               key={item._id}
               className="w-full sm:w-[306px] pb-4 flex flex-col items-center gap-4 border-2 border-slate-200 rounded-xl hover:border-blue-300 hover:shadow-xl transition-all duration-300 bg-white overflow-hidden relative"
             >
-              <div className="absolute top-4 left-4 z-10 px-3 py-1 rounded-full bg-white/90 text-xs font-semibold text-blue-600 shadow">
+              <div className="absolute top-4 left-4 z-10 flex flex-col gap-2">
+                <span className="px-3 py-1 rounded-full bg-white/90 text-xs font-semibold text-blue-600 shadow">
                 {getBadge(index)}
+                </span>
+                <span
+                  className={`px-3 py-1 rounded-full text-xs font-semibold text-white shadow ${getCategoryBadgeClass(
+                    getCategoryLabel(item.category)
+                  )}`}
+                >
+                  {getCategoryLabel(item.category)}
+                </span>
               </div>
               <div className="w-full h-[200px] overflow-hidden rounded-t-xl">
                 <img
@@ -101,11 +171,31 @@ const Menu = () => {
                   className="w-full h-full object-cover hover:scale-110 transition-transform duration-500"
                 />
               </div>
-              <h4 className="font-DM_sans font-bold text-2xl text-blue-600">
-                {formatPrice(item.price)}
-              </h4>
-              <h5 className="font-DM_sans font-bold text-xl">{item.name}</h5>
-              <p className="px-[30px] text-center font-DM_sans font-normal text-base">
+              <div className="flex flex-col items-center gap-1">
+                {item.discountPercent > 0 ? (
+                  <>
+                    <div className="flex items-center gap-2">
+                      <span className="font-DM_sans text-lg text-slate-400 line-through">
+                        {formatPrice(item.price)}
+                      </span>
+                      <span className="px-2 py-0.5 rounded-full bg-red-500 text-white text-xs font-bold">
+                        -{item.discountPercent}%
+                      </span>
+                    </div>
+                    <h4 className="font-DM_sans font-bold text-2xl text-red-600">
+                      {formatPrice(
+                        Number(item.price) * (1 - (item.discountPercent || 0) / 100)
+                      )}
+                    </h4>
+                  </>
+                ) : (
+                  <h4 className="font-DM_sans font-bold text-2xl text-blue-600">
+                    {formatPrice(item.price)}
+                  </h4>
+                )}
+              </div>
+              <h5 className="font-DM_sans font-bold text-xl text-center">{item.name}</h5>
+              <p className="px-[30px] text-center font-DM_sans font-normal text-base text-slate-600">
                 {item.info}
               </p>
               <div className="flex items-center gap-3 text-sm font-semibold text-slate-600">

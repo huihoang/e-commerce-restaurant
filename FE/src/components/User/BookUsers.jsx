@@ -1,7 +1,10 @@
-import { useState, useEffect, useMemo } from "react";
+import { useState, useEffect, useMemo, useCallback } from "react";
 import axios from "axios";
 import { useNotification } from "@/contexts/NotificationContext";
 import DropdownSelect from "@/components/common/DropdownSelect";
+import DiscountCodeSection from "@/components/User/EditBookingModal/DiscountCodeSection";
+
+const FALLBACK_CATEGORIES = ["Bữa Sáng", "Bữa Trưa", "Đồ Uống", "Tráng Miệng"];
 
 const BookUser = () => {
   const { showSuccess, showError } = useNotification();
@@ -18,32 +21,21 @@ const BookUser = () => {
     deliveryEmail: "",
     note: "",
     selectedDishes: [],
+    discount: 0,
+    discountCode: null,
   });
   const [menuItems, setMenuItems] = useState([]);
   const [selectedCategory, setSelectedCategory] = useState("Tất cả");
   const [bookings, setBookings] = useState([]); // Danh sách booking để check bàn đã đặt
+  const [tables, setTables] = useState([]);
+  const [categories, setCategories] = useState([]);
   const API_BASE_URL =
     import.meta.env.VITE_API_BASE_URL || "http://localhost:5000";
 
-  // ==================== Mock data: Danh sách bàn (có thể fetch từ API sau)
-  const allTables = useMemo(() => {
-    return Array.from({ length: 20 }, (_, i) => {
-      let capacity;
-      if (i < 5) {
-        capacity = 2;
-      } else if (i < 10) {
-        capacity = 4;
-      } else if (i < 15) {
-        capacity = 6;
-      } else {
-        capacity = 8;
-      }
-      return {
-        number: i + 1,
-        capacity,
-      };
-    });
-  }, []);
+  const normalizeBooking = (booking) => ({
+    ...booking,
+    orderType: booking.orderType || (booking.ship?.isShip ? "takeaway" : "dine-in"),
+  });
 
   // ==================== Fetch bookings để check bàn đã đặt
   useEffect(() => {
@@ -55,7 +47,10 @@ const BookUser = () => {
             Authorization: `Bearer ${token}`,
           },
         });
-        setBookings(res.data || []);
+        const data = Array.isArray(res.data)
+          ? res.data.map(normalizeBooking)
+          : [];
+        setBookings(data);
       } catch (err) {
         console.error("❌ Lỗi khi lấy danh sách đặt bàn:", err.message);
       }
@@ -63,34 +58,75 @@ const BookUser = () => {
     fetchBookings();
   }, [API_BASE_URL]);
 
+  useEffect(() => {
+    const fetchTables = async () => {
+      try {
+        const res = await axios.get(`${API_BASE_URL}/api/tables`);
+        setTables(Array.isArray(res.data) ? res.data : []);
+      } catch (err) {
+        console.error("❌ Lỗi khi lấy danh sách bàn:", err.message);
+      }
+    };
+    fetchTables();
+  }, [API_BASE_URL]);
+
+  // ==================== Kiểm tra bàn có bận không
+  const isTableBusy = useCallback(
+    (table, dateValue, timeValue) => {
+      if (!dateValue || !timeValue || !table) return true;
+      const dateKey = dateValue.split("T")[0];
+      return bookings.some((booking) => {
+        const bookingOrderType =
+          booking.orderType || (booking.ship?.isShip ? "takeaway" : "dine-in");
+        if (bookingOrderType !== "dine-in") return false;
+        const bookingDate = (booking.date || "").split("T")[0];
+        if (bookingDate !== dateKey) return false;
+        // Check by tableNumber
+        if (booking.tableNumber && table.number) {
+          if (booking.tableNumber.toString() !== table.number.toString()) {
+            return false;
+          }
+        } else {
+          return false;
+        }
+        // Bàn bận nếu: chưa thanh toán HOẶC cùng khung giờ
+        const isPending = !(booking.payment?.isPaid);
+        const sameSlot = booking.time === timeValue;
+        return isPending || sameSlot;
+      });
+    },
+    [bookings]
+  );
+
   // ==================== Lọc bàn còn trống dựa trên ngày, giờ và số người
   const availableTables = useMemo(() => {
+    if (orderType !== "dine-in") return [];
     if (!formData.date || !formData.time || !formData.people) {
-      return allTables;
+      return [];
     }
 
-    // Lọc các booking trùng ngày và giờ
-    const conflictingBookings = bookings.filter((booking) => {
-      if (booking.orderType !== "dine-in") return false;
-      const bookingDate = new Date(booking.date).toISOString().split("T")[0];
-      return bookingDate === formData.date && booking.time === formData.time;
-    });
-
-    // Lấy danh sách số bàn đã được đặt
-    const bookedTableNumbers = new Set(
-      conflictingBookings
-        .map((b) => b.tableNumber)
-        .filter(Boolean)
-        .map((num) => num.toString())
-    );
-
-    // Lọc bàn còn trống và phù hợp với số người
-    return allTables.filter(
-      (table) =>
-        !bookedTableNumbers.has(table.number.toString()) &&
-        table.capacity >= formData.people
-    );
-  }, [allTables, bookings, formData.date, formData.time, formData.people]);
+    return tables
+      .filter((table) => table && table.isActive)
+      .filter(
+        (table) => Number(table.capacity || 0) >= Number(formData.people || 0)
+      )
+      .filter(
+        (table) => !isTableBusy(table, formData.date, formData.time)
+      )
+      .sort((a, b) => {
+        const numA = Number(a.number) || 0;
+        const numB = Number(b.number) || 0;
+        return numA - numB;
+      });
+  }, [
+    tables,
+    bookings,
+    formData.date,
+    formData.time,
+    formData.people,
+    orderType,
+    isTableBusy,
+  ]);
 
   // ==================== Tạo options cho DropdownSelect
   const tableOptions = useMemo(() => {
@@ -103,7 +139,9 @@ const BookUser = () => {
       ];
     }
     return availableTables.map((table) => ({
-      label: `Bàn ${table.number} (${table.capacity} người)`,
+      label: `Bàn ${table.number} (${table.capacity || 0} người)${
+        table.location ? ` • ${table.location}` : ""
+      }`,
       value: table.number.toString(),
     }));
   }, [availableTables]);
@@ -160,6 +198,22 @@ const BookUser = () => {
     try {
       const token = localStorage.getItem("token");
 
+      if (!formData.name || !formData.phone || !formData.date || !formData.time) {
+        showError("Vui lòng nhập đầy đủ thông tin khách hàng, ngày và giờ.");
+        return;
+      }
+
+      if (orderType === "dine-in") {
+        if (!formData.people || Number(formData.people) <= 0) {
+          showError("Vui lòng nhập số lượng người hợp lệ.");
+          return;
+        }
+        if (!formData.tableNumber) {
+          showError("Vui lòng chọn một bàn đang trống.");
+          return;
+        }
+      }
+
       // Chuẩn bị dữ liệu gửi đi
       const submitData = {
         name: formData.name,
@@ -172,6 +226,8 @@ const BookUser = () => {
           quantity: dish.quantity,
         })),
         orderType: orderType,
+        discount: formData.discount || 0,
+        discountCode: formData.discountCode,
         // Thông tin cho "Ăn tại quán"
         ...(orderType === "dine-in" && {
           people: formData.people,
@@ -202,6 +258,8 @@ const BookUser = () => {
         deliveryEmail: "",
         note: "",
         selectedDishes: [],
+        discount: 0,
+        discountCode: null,
       });
       setOrderType("dine-in");
     } catch (err) {
@@ -216,26 +274,155 @@ const BookUser = () => {
     }
   };
 
-  // ==================== Lọc món theo category
+  useEffect(() => {
+    const fetchCategories = async () => {
+      try {
+        const res = await axios.get(`${API_BASE_URL}/api/categories`);
+        setCategories(Array.isArray(res.data) ? res.data : []);
+      } catch (err) {
+        console.error("❌ Lỗi khi lấy danh mục:", err.message);
+      }
+    };
+    fetchCategories();
+  }, [API_BASE_URL]);
+
+  const activeCategoryNames = useMemo(() => {
+    const names = categories
+      .filter((cat) => cat.isActive !== false)
+      .map((cat) => cat.name)
+      .filter(Boolean);
+    return names.length > 0 ? names : FALLBACK_CATEGORIES;
+  }, [categories]);
+
+  const categoryFilters = useMemo(() => {
+    const unique = Array.from(new Set(activeCategoryNames));
+    return ["Tất cả", ...unique];
+  }, [activeCategoryNames]);
+
+  const tableMap = useMemo(() => {
+    const map = new Map();
+    for (const table of tables) {
+      if (!table) continue;
+      if (table._id) {
+        map.set(table._id, table);
+      }
+      if (table.number !== undefined && table.number !== null) {
+        map.set(table.number.toString(), table);
+      }
+    }
+    return map;
+  }, [tables]);
+
+  const matchBookingTable = (booking, table) => {
+    if (!table) return false;
+    const bookingTableId =
+      booking.tableId?._id || booking.tableId || booking.table?._id;
+    if (bookingTableId && table._id) {
+      if (bookingTableId.toString() === table._id.toString()) {
+        return true;
+      }
+    }
+    if (booking.tableNumber && table.number !== undefined) {
+      if (booking.tableNumber.toString() === table.number.toString()) {
+        return true;
+      }
+    }
+    return false;
+  };
+
+
+  const selectedTableInfo = formData.tableNumber
+    ? tableMap.get(formData.tableNumber)
+    : null;
+
+  useEffect(() => {
+    if (!categoryFilters.includes(selectedCategory)) {
+      setSelectedCategory("Tất cả");
+    }
+  }, [categoryFilters, selectedCategory]);
+
+  useEffect(() => {
+    if (orderType !== "dine-in") {
+      setFormData((prev) => ({
+        ...prev,
+        tableNumber: "",
+      }));
+    }
+  }, [orderType]);
+
+  const categoryMap = useMemo(() => {
+    const map = new Map();
+    categories.forEach((cat) => {
+      if (!cat) return;
+      if (cat._id) {
+        map.set(cat._id, cat.name || cat.slug || "");
+      }
+      if (cat.name) {
+        map.set(cat.name, cat.name);
+      }
+    });
+    FALLBACK_CATEGORIES.forEach((name) => {
+      if (!map.has(name)) {
+        map.set(name, name);
+      }
+    });
+    return map;
+  }, [categories]);
+
+  const getCategoryLabel = (value) => {
+    if (!value) return "Chưa phân loại";
+    if (typeof value === "object") {
+      return value.name || categoryMap.get(value._id) || "Chưa phân loại";
+    }
+    return categoryMap.get(value) || value || "Chưa phân loại";
+  };
+
   const filteredMenu =
     selectedCategory === "Tất cả"
       ? menuItems
-      : menuItems.filter((item) => item.category === selectedCategory);
+      : menuItems.filter((item) => {
+          const label = getCategoryLabel(item.category);
+          return label === selectedCategory;
+        });
 
-  const categories = [
-    "Tất cả",
-    "Bữa Sáng",
-    "Bữa Trưa",
-    "Đồ Uống",
-    "Tráng Miệng",
-  ];
-
-  // Tính tổng tiền
-  const calculateTotal = () => {
-    return formData.selectedDishes.reduce((total, dishItem) => {
+  const totals = useMemo(() => {
+    // Tính tổng tiền với giảm giá của từng món
+    const subtotal = formData.selectedDishes.reduce((total, dishItem) => {
       const dish = menuItems.find((item) => item._id === dishItem.dishId);
-      return total + (dish?.price || 0) * (dishItem.quantity || 0);
+      if (!dish) return total;
+      const basePrice = Number(dish.price) || 0;
+      const discountPercent = Number(dish.discountPercent) || 0;
+      const discountedPrice = basePrice * (1 - discountPercent / 100);
+      return total + discountedPrice * (dishItem.quantity || 0);
     }, 0);
+    // Áp dụng mã giảm giá (nếu có)
+    const discountPercent = Number(formData.discount || 0);
+    const discountAmount = (subtotal * discountPercent) / 100;
+    const total = Math.max(0, subtotal - discountAmount);
+    return { subtotal, discountAmount, total, discountPercent };
+  }, [formData.selectedDishes, formData.discount, menuItems]);
+
+  const handleSelectDiscount = ({ code, discount }) => {
+    setFormData((prev) => ({
+      ...prev,
+      discountCode: code,
+      discount,
+    }));
+  };
+
+  const handleRemoveDiscount = () => {
+    setFormData((prev) => ({
+      ...prev,
+      discountCode: null,
+      discount: 0,
+    }));
+  };
+
+  const handleSelectTable = (tableNumber) => {
+    setFormData((prev) => ({
+      ...prev,
+      tableNumber: tableNumber || "",
+    }));
   };
 
   return (
@@ -384,30 +571,24 @@ const BookUser = () => {
                       Số bàn <span className="text-red-500">*</span>
                     </label>
                     {formData.date && formData.time && formData.people ? (
+                      tableOptions.length > 0 ? (
                       <>
                         <DropdownSelect
                           options={tableOptions}
                           value={formData.tableNumber}
-                          onChange={(value) =>
-                            setFormData((prev) => ({
-                              ...prev,
-                              tableNumber: value,
-                            }))
-                          }
+                            onChange={handleSelectTable}
                           placeholder="Chọn bàn"
                           className="w-full"
                         />
-                        {availableTables.length > 0 && (
                           <p className="mt-2 text-xs text-emerald-600">
-                            ✓ Có {availableTables.length} bàn trống phù hợp
+                            ✓ Có {tableOptions.length} bàn trống phù hợp
                           </p>
-                        )}
-                        {availableTables.length === 0 && (
-                          <p className="mt-2 text-xs text-red-500">
-                            ⚠ Không có bàn trống cho {formData.people} người vào thời điểm này
-                          </p>
-                        )}
-                      </>
+                        </>
+                      ) : (
+                        <div className="w-full rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-700">
+                          Không có bàn trống cho {formData.people} người ở thời điểm này.
+                        </div>
+                      )
                     ) : (
                       <div className="w-full rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm text-slate-500">
                         Vui lòng chọn ngày, giờ và số người trước
@@ -508,13 +689,23 @@ const BookUser = () => {
               />
             </div>
 
+            {/* Chọn mã giảm giá */}
+            <DiscountCodeSection
+              booking={{
+                discount: formData.discount,
+                discountCode: formData.discountCode,
+              }}
+              onSelectDiscount={handleSelectDiscount}
+              onRemoveDiscount={handleRemoveDiscount}
+            />
+
             {/* Chọn món ăn */}
             <div className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
               <label className="font-semibold block mb-4 text-lg text-slate-900">
                 🍽️ Chọn món ăn
               </label>
               <div className="flex flex-wrap gap-2 mb-4">
-                {categories.map((cat) => (
+                {categoryFilters.map((cat) => (
                   <button
                     key={cat}
                     type="button"
@@ -560,12 +751,32 @@ const BookUser = () => {
                           <h4 className="text-sm font-semibold truncate text-slate-900">
                             {dish.name}
                           </h4>
-                          <p className="text-xs text-slate-500 mb-1">
-                            {dish.category}
-                          </p>
-                          <p className="text-sm font-bold text-emerald-600">
-                            {Number(dish.price).toLocaleString("vi-VN")} đ
-                          </p>
+                          <span className="inline-flex items-center rounded-full bg-emerald-50 px-3 py-1 text-xs font-semibold text-emerald-700">
+                            {getCategoryLabel(dish.category)}
+                          </span>
+                          {dish.discountPercent > 0 ? (
+                            <div className="flex flex-col gap-1">
+                              <div className="flex items-center gap-2">
+                                <span className="text-xs text-slate-400 line-through">
+                                  {Number(dish.price).toLocaleString("vi-VN")} đ
+                                </span>
+                                <span className="px-2 py-0.5 rounded-full bg-red-500 text-white text-xs font-bold">
+                                  -{dish.discountPercent}%
+                                </span>
+                              </div>
+                              <p className="text-sm font-bold text-red-600">
+                                {(
+                                  Number(dish.price) *
+                                  (1 - (Number(dish.discountPercent) || 0) / 100)
+                                ).toLocaleString("vi-VN")}{" "}
+                                đ
+                              </p>
+                            </div>
+                          ) : (
+                            <p className="text-sm font-bold text-emerald-600">
+                              {Number(dish.price).toLocaleString("vi-VN")} đ
+                            </p>
+                          )}
                         </div>
 
                         {isSelected && (
@@ -622,11 +833,16 @@ const BookUser = () => {
                     {orderType === "dine-in" ? "🏠 Ăn tại quán" : "📦 Mang đi"}
                   </span>
                 </div>
-                {orderType === "dine-in" && Boolean(formData.tableNumber) && (
+                {orderType === "dine-in" && selectedTableInfo && (
                   <div className="flex justify-between text-sm">
-                    <span className="text-slate-600">Bàn số:</span>
+                    <span className="text-slate-600">Bàn:</span>
                     <span className="font-semibold text-slate-900">
-                      {formData.tableNumber}
+                      {selectedTableInfo.name ||
+                        `Bàn ${selectedTableInfo.number}`}{" "}
+                      <span className="text-xs text-slate-500">
+                        ({selectedTableInfo.capacity || 0} người
+                        {selectedTableInfo.area ? ` • ${selectedTableInfo.area}` : ""})
+                      </span>
                     </span>
                   </div>
                 )}
@@ -678,7 +894,9 @@ const BookUser = () => {
                           </span>
                           <span className="font-semibold text-emerald-600 ml-2">
                             {(
-                              dish.price * dishItem.quantity
+                              (Number(dish.price) || 0) *
+                                (1 - (Number(dish.discountPercent) || 0) / 100) *
+                              dishItem.quantity
                             ).toLocaleString("vi-VN")}{" "}
                             đ
                           </span>
@@ -694,13 +912,30 @@ const BookUser = () => {
               </div>
 
               {/* Tổng tiền */}
-              <div className="border-t border-slate-200 pt-4">
-                <div className="flex justify-between items-center mb-2">
+              <div className="border-t border-slate-200 pt-4 space-y-2">
+                <div className="flex justify-between items-center">
+                  <span className="text-sm font-semibold text-slate-600">
+                    Tạm tính:
+                  </span>
+                  <span className="text-base font-bold text-slate-900">
+                    {totals.subtotal.toLocaleString("vi-VN")} đ
+                  </span>
+                </div>
+                {totals.discountPercent > 0 && (
+                  <div className="flex justify-between items-center text-sm font-semibold text-amber-600">
+                    <span>
+                      Giảm {totals.discountPercent}%{" "}
+                      {formData.discountCode ? `(${formData.discountCode})` : ""}
+                    </span>
+                    <span>-{totals.discountAmount.toLocaleString("vi-VN")} đ</span>
+                  </div>
+                )}
+                <div className="flex justify-between items-center border-t border-dashed border-emerald-200 pt-3">
                   <span className="text-base font-semibold text-slate-700">
                     Tổng cộng:
                   </span>
-                  <span className="text-xl font-bold text-emerald-600">
-                    {calculateTotal().toLocaleString("vi-VN")} đ
+                  <span className="text-2xl font-bold text-emerald-600">
+                    {totals.total.toLocaleString("vi-VN")} đ
                   </span>
                 </div>
               </div>

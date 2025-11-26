@@ -1,14 +1,23 @@
 // ==================== All Import
 import PropTypes from "prop-types";
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { Outlet, useLocation, useNavigate } from "react-router-dom";
 
-const menuOptions = [
+const adminMenuOptions = [
   { label: "Quản Lý Người Dùng", path: "users" },
   { label: "Quản Lý Menu", path: "menu" },
+  { label: "Quản Lý Danh Mục", path: "categories" },
+  { label: "Quản Lý Bàn", path: "tables" },
+  { label: "Quản Lý Giảm Giá", path: "discounts" },
   { label: "Quản Lý Blog", path: "blog" },
-  { label: "Quản Lý Đặt Bàn", path: "bookings" },
   { label: "Quản Lý Liên Hệ", path: "contacts" },
+  { label: "Lịch Sử Đặt Bàn", path: "bookings" },
+];
+
+const staffMenuOptions = [
+  { label: "Đặt Món", path: "book" },
+  { label: "Lịch Sử Đặt Món", path: "history" },
+  { label: "Thông Tin Tài Khoản", path: "profile" },
 ];
 
 // ==================== All Components
@@ -16,6 +25,13 @@ const AdminDashboard = ({ onLogout }) => {
   const location = useLocation();
   const navigate = useNavigate();
   const [isMenuOpen, setIsMenuOpen] = useState(false);
+
+  const role = localStorage.getItem("role") || "user";
+  const isAdmin = role === "admin";
+  const menuOptions = useMemo(
+    () => (isAdmin ? adminMenuOptions : staffMenuOptions),
+    [isAdmin]
+  );
 
   const currentSegment =
     location.pathname.replace(/^\/admin\/?/, "") || menuOptions[0].path;
@@ -37,15 +53,17 @@ const AdminDashboard = ({ onLogout }) => {
     <div className="flex flex-col lg:flex-row min-h-screen bg-gray-50">
       {/* Sidebar - Desktop - Fixed */}
       <aside className="hidden lg:flex lg:flex-col lg:w-64 bg-white border-r p-4 space-y-3 sticky top-0 h-screen overflow-y-auto">
-        <h2 className="text-xl font-bold text-blue-700 mb-4">🛠️ Quản trị viên</h2>
+        <h2 className="text-xl font-bold text-blue-700 mb-4">
+          {isAdmin ? "🛠️ Quản trị viên" : "👔 Nhân viên"}
+        </h2>
         {menuOptions.map((item) => (
           <button
             key={item.path}
             onClick={() => handleMenuClick(item.path)}
             className={`block w-full text-left px-4 py-2 rounded-lg ${
               activeMenu.path === item.path
-              ? "bg-blue-600 text-white"
-              : "hover:bg-blue-100 text-gray-800"
+              ? isAdmin ? "bg-blue-600 text-white" : "bg-green-600 text-white"
+              : isAdmin ? "hover:bg-blue-100 text-gray-800" : "hover:bg-green-100 text-gray-800"
               } transition duration-200`}
           >
             {item.label}
@@ -65,19 +83,25 @@ const AdminDashboard = ({ onLogout }) => {
         {/* Mobile top bar */}
         <div className="lg:hidden flex items-center justify-between mb-6">
           <div>
-            <p className="text-sm text-slate-500">🛠️ Quản trị viên</p>
-            <h1 className="text-xl font-semibold text-blue-700">
+            <p className="text-sm text-slate-500">
+              {isAdmin ? "🛠️ Quản trị viên" : "👔 Nhân viên"}
+            </p>
+            <h1 className={`text-xl font-semibold ${isAdmin ? "text-blue-700" : "text-green-700"}`}>
               {activeMenu.label}
             </h1>
           </div>
           <button
-            className="inline-flex flex-col gap-1 p-3 rounded-lg border border-blue-200 text-blue-700 shadow-sm"
+            className={`inline-flex flex-col gap-1 p-3 rounded-lg border shadow-sm ${
+              isAdmin 
+                ? "border-blue-200 text-blue-700" 
+                : "border-green-200 text-green-700"
+            }`}
             onClick={() => setIsMenuOpen(true)}
-            aria-label="Mở menu quản trị"
+            aria-label="Mở menu"
           >
-            <span className="w-6 h-0.5 bg-blue-700" />
-            <span className="w-6 h-0.5 bg-blue-700" />
-            <span className="w-6 h-0.5 bg-blue-700" />
+            <span className={`w-6 h-0.5 ${isAdmin ? "bg-blue-700" : "bg-green-700"}`} />
+            <span className={`w-6 h-0.5 ${isAdmin ? "bg-blue-700" : "bg-green-700"}`} />
+            <span className={`w-6 h-0.5 ${isAdmin ? "bg-blue-700" : "bg-green-700"}`} />
           </button>
         </div>
 
@@ -101,11 +125,13 @@ const AdminDashboard = ({ onLogout }) => {
         }`}
       >
         <div className="flex items-center justify-between p-4 border-b">
-          <h2 className="text-lg font-semibold text-blue-700">🛠️ Quản trị viên</h2>
+          <h2 className={`text-lg font-semibold ${isAdmin ? "text-blue-700" : "text-green-700"}`}>
+            {isAdmin ? "🛠️ Quản trị viên" : "👔 Nhân viên"}
+          </h2>
           <button
             className="p-2 rounded-full hover:bg-slate-100"
             onClick={closeMenu}
-            aria-label="Đóng menu quản trị"
+            aria-label="Đóng menu"
           >
             ✕
           </button>
@@ -117,8 +143,12 @@ const AdminDashboard = ({ onLogout }) => {
               onClick={() => handleMenuClick(item.path)}
               className={`w-full text-left px-4 py-3 rounded-lg font-medium transition duration-200 ${
                 activeMenu.path === item.path
-                  ? "bg-blue-600 text-white shadow"
-                  : "bg-blue-50 text-blue-700 hover:bg-blue-100"
+                  ? isAdmin 
+                    ? "bg-blue-600 text-white shadow"
+                    : "bg-green-600 text-white shadow"
+                  : isAdmin
+                    ? "bg-blue-50 text-blue-700 hover:bg-blue-100"
+                    : "bg-green-50 text-green-700 hover:bg-green-100"
               }`}
             >
               {item.label}

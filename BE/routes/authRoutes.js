@@ -16,9 +16,9 @@ router.post("/login", authController.login);
 router.get(
   "/admin-only",
   authenticateToken,
-  requireRole("admin"),
+  requireRole("admin", "staff"),
   (req, res) => {
-    res.json({ message: "Welcome, Admin!" });
+    res.json({ message: "Welcome, privileged user!" });
   }
 );
 

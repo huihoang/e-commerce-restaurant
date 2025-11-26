@@ -30,6 +30,7 @@ export function addToCart(product, quantity = 1) {
       price: product.price,
       image: product.image,
       quantity: qty,
+      discountPercent: product.discountPercent || 0,
     });
   }
   setCart(items);

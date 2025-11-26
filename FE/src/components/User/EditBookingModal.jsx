@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import PropTypes from "prop-types";
 import axios from "axios";
 import { useNotification } from "@/contexts/NotificationContext";
 import ModalHeader from "./EditBookingModal/ModalHeader";
@@ -61,23 +62,40 @@ const EditBookingModal = ({ booking, onClose, onSave }) => {
     }
   };
 
+  const getDishIdValue = (dishId) => {
+    if (typeof dishId === "object" && dishId?._id) {
+      return dishId._id;
+    }
+    return dishId;
+  };
+
+  const normalizeKey = (value, fallback) => {
+    if (value === undefined || value === null || value === "") {
+      return fallback;
+    }
+    return value;
+  };
+
   const handleRemoveDish = (dishId) => {
     setUpdatedBooking((prev) => ({
       ...prev,
-      selectedDishes: prev.selectedDishes.filter(
-        (dish) => dish.dishId._id !== dishId
-      ),
+      selectedDishes: prev.selectedDishes.filter((dish, idx) => {
+        const key = getDishIdValue(dish.dishId);
+        return normalizeKey(key, idx) !== dishId;
+      }),
     }));
   };
 
   const handleQuantityChange = (dishId, quantity) => {
     setUpdatedBooking((prev) => ({
       ...prev,
-      selectedDishes: prev.selectedDishes.map((dish) =>
-        dish.dishId._id === dishId
-          ? { ...dish, quantity: Number(quantity) }
-          : dish
-      ),
+      selectedDishes: prev.selectedDishes.map((dish, idx) => {
+        const key = getDishIdValue(dish.dishId);
+        if (normalizeKey(key, idx) === dishId) {
+          return { ...dish, quantity: Number(quantity) };
+        }
+        return dish;
+      }),
     }));
   };
 
@@ -100,9 +118,24 @@ const EditBookingModal = ({ booking, onClose, onSave }) => {
   const handleSave = async () => {
     try {
       const token = localStorage.getItem("token");
+      const payload = {
+        name: updatedBooking.name,
+        phone: updatedBooking.phone,
+        date: updatedBooking.date,
+        time: updatedBooking.time,
+        people: updatedBooking.people,
+        note: updatedBooking.note,
+        tableNumber: updatedBooking.tableNumber,
+        discount: updatedBooking.discount || 0,
+        discountCode: updatedBooking.discountCode || null,
+        selectedDishes: (updatedBooking.selectedDishes || []).map((dish) => ({
+          dishId: getDishIdValue(dish.dishId),
+          quantity: dish.quantity,
+        })),
+      };
       await axios.put(
         `${API_BASE_URL}/api/bookings/${updatedBooking._id}`,
-        updatedBooking,
+        payload,
         {
           headers: {
             Authorization: `Bearer ${token}`,
@@ -110,7 +143,27 @@ const EditBookingModal = ({ booking, onClose, onSave }) => {
         }
       );
       showSuccess("Cập nhật đặt món thành công!");
-      onSave(updatedBooking);
+      const hydratedDishes = payload.selectedDishes.map((dish) => {
+        const original = (updatedBooking.selectedDishes || []).find((item) => {
+          const key = getDishIdValue(item.dishId);
+          return key === dish.dishId;
+        });
+        if (original && typeof original.dishId === "object") {
+          return {
+            dishId: original.dishId,
+            quantity: dish.quantity,
+          };
+        }
+        return {
+          dishId: dish.dishId,
+          quantity: dish.quantity,
+        };
+      });
+      onSave({
+        ...updatedBooking,
+        ...payload,
+        selectedDishes: hydratedDishes,
+      });
     } catch (err) {
       console.error("❌ Lỗi khi cập nhật đặt món:", err.message);
       showError("Lỗi khi cập nhật đặt món. Vui lòng thử lại!");
@@ -134,7 +187,7 @@ const EditBookingModal = ({ booking, onClose, onSave }) => {
   const totalAmounts = calculateTotal();
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm p-4">
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm p-0">
       <div className="w-full max-w-4xl max-h-[90vh] flex flex-col rounded-3xl bg-white shadow-2xl">
         <ModalHeader onClose={onClose} />
 
@@ -168,6 +221,38 @@ const EditBookingModal = ({ booking, onClose, onSave }) => {
       </div>
     </div>
   );
+};
+
+EditBookingModal.propTypes = {
+  booking: PropTypes.shape({
+    _id: PropTypes.string.isRequired,
+    name: PropTypes.string,
+    phone: PropTypes.string,
+    date: PropTypes.string,
+    time: PropTypes.string,
+    people: PropTypes.number,
+    note: PropTypes.string,
+    tableNumber: PropTypes.oneOfType([PropTypes.string, PropTypes.number]),
+    discount: PropTypes.number,
+    discountCode: PropTypes.string,
+    selectedDishes: PropTypes.arrayOf(
+      PropTypes.shape({
+        dishId: PropTypes.oneOfType([
+          PropTypes.string,
+          PropTypes.number,
+          PropTypes.shape({
+            _id: PropTypes.string,
+            name: PropTypes.string,
+            price: PropTypes.oneOfType([PropTypes.number, PropTypes.string]),
+            image: PropTypes.string,
+          }),
+        ]),
+        quantity: PropTypes.number,
+      })
+    ),
+  }).isRequired,
+  onClose: PropTypes.func.isRequired,
+  onSave: PropTypes.func.isRequired,
 };
 
 export default EditBookingModal;

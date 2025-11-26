@@ -12,6 +12,7 @@ const BookingHistoryList = ({
   onEdit,
   onDelete,
   onPayment,
+  isAdmin = false,
 }) => {
   if (loading) {
     return (
@@ -54,6 +55,7 @@ const BookingHistoryList = ({
             onEdit={onEdit}
             onDelete={onDelete}
             onPayment={onPayment}
+            isAdmin={isAdmin}
           />
         );
       })}

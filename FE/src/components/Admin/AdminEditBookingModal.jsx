@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import axios from "axios";
 import { useNotification } from "@/contexts/NotificationContext";
+import DiscountCodeSection from "@/components/User/EditBookingModal/DiscountCodeSection";
 
 const AdminEditBookingModal = ({ booking, onClose, onSave }) => {
   const { showSuccess, showError } = useNotification();
@@ -73,6 +74,22 @@ const AdminEditBookingModal = ({ booking, onClose, onSave }) => {
     }));
   };
 
+  const handleSelectDiscount = ({ code, discount }) => {
+    setUpdatedBooking((prev) => ({
+      ...prev,
+      discountCode: code,
+      discount,
+    }));
+  };
+
+  const handleRemoveDiscount = () => {
+    setUpdatedBooking((prev) => ({
+      ...prev,
+      discountCode: null,
+      discount: 0,
+    }));
+  };
+
   const handleSave = async () => {
     try {
       const token = localStorage.getItem("token");
@@ -82,6 +99,8 @@ const AdminEditBookingModal = ({ booking, onClose, onSave }) => {
         time: updatedBooking.time,
         people: updatedBooking.people,
         note: updatedBooking.note,
+        discount: updatedBooking.discount || 0,
+        discountCode: updatedBooking.discountCode || null,
         selectedDishes: updatedBooking.selectedDishes.map((dish) => ({
           dishId: dish.dishId._id || dish.dishId,
           quantity: dish.quantity,
@@ -99,7 +118,12 @@ const AdminEditBookingModal = ({ booking, onClose, onSave }) => {
       );
 
       showSuccess("Cập nhật đặt bàn thành công!");
-      onSave(updatedBooking);
+      onSave({
+        ...updatedBooking,
+        discount: payload.discount,
+        discountCode: payload.discountCode,
+        totalAmount: calculateTotals().total,
+      });
     } catch (err) {
       console.error("❌ Lỗi khi cập nhật đặt bàn:", err.message);
       showError("Lỗi khi cập nhật đặt bàn. Vui lòng thử lại!");
@@ -110,16 +134,22 @@ const AdminEditBookingModal = ({ booking, onClose, onSave }) => {
     dish.name.toLowerCase().includes(searchMenu.toLowerCase())
   );
 
-  const calculateTotal = () => {
-    return updatedBooking.selectedDishes.reduce(
+  const calculateTotals = () => {
+    const subtotal = updatedBooking.selectedDishes.reduce(
       (total, dish) =>
-        total + (dish.dishId?.price || 0) * (dish.quantity || 0),
+        total + Number(dish.dishId?.price || 0) * Number(dish.quantity || 0),
       0
     );
+    const discountPercent = Number(updatedBooking.discount || 0);
+    const discountAmount = (subtotal * discountPercent) / 100;
+    const total = Math.max(0, subtotal - discountAmount);
+    return { subtotal, discountAmount, total };
   };
 
+  const totals = calculateTotals();
+
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm p-4">
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm p-0">
       <div className="w-full max-w-4xl max-h-[90vh] flex flex-col rounded-3xl bg-white shadow-2xl">
         {/* Header */}
         <div className="flex items-center justify-between border-b border-slate-200 bg-gradient-to-r from-blue-500 to-indigo-600 px-6 py-4 rounded-t-3xl">
@@ -278,13 +308,29 @@ const AdminEditBookingModal = ({ booking, onClose, onSave }) => {
                 })}
               </div>
             )}
-            <div className="mt-4 flex items-center justify-between rounded-xl bg-gradient-to-r from-green-50 to-emerald-50 px-4 py-3">
-              <span className="font-bold text-slate-700">💰 Tổng tiền:</span>
-              <span className="text-xl font-bold text-green-700">
-                {calculateTotal().toLocaleString("vi-VN")} đ
-              </span>
+            <div className="mt-4 space-y-2 rounded-xl bg-gradient-to-r from-green-50 to-emerald-50 px-4 py-3">
+              <div className="flex items-center justify-between text-sm font-semibold text-slate-700">
+                <span>🧾 Tạm tính:</span>
+                <span>{totals.subtotal.toLocaleString("vi-VN")} đ</span>
+              </div>
+              {updatedBooking.discount > 0 && (
+                <div className="flex items-center justify-between text-sm font-semibold text-amber-600">
+                  <span>🎁 Giảm giá ({updatedBooking.discount}%):</span>
+                  <span>-{totals.discountAmount.toLocaleString("vi-VN")} đ</span>
+                </div>
+              )}
+              <div className="flex items-center justify-between text-lg font-bold text-green-700">
+                <span>💰 Tổng tiền:</span>
+                <span>{totals.total.toLocaleString("vi-VN")} đ</span>
+              </div>
             </div>
           </div>
+
+          <DiscountCodeSection
+            booking={updatedBooking}
+            onSelectDiscount={handleSelectDiscount}
+            onRemoveDiscount={handleRemoveDiscount}
+          />
 
           {/* Menu List Section */}
           <div className="rounded-2xl border border-slate-200 bg-slate-50 p-4">

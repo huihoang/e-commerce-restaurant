@@ -20,6 +20,9 @@ import AdminDashboard from "./components/Admin/AdminDashboard";
 import AdminUserManager from "./components/Admin/AdminUserManager";
 import AdminMenuManager from "./components/Admin/AdminMenuManager";
 import AdminBlogList from "./components/Admin/AdminBlogList";
+import AdminCategoryManager from "./components/Admin/AdminCategoryManager";
+import AdminDiscountManager from "./components/Admin/AdminDiscountManager";
+import AdminTableManager from "./components/Admin/AdminTableManager";
 import AdminBookingList from "./components/Admin/AdminBookingList";
 import AdminContactList from "./components/Admin/AdminContactList";
 import UserDashboard from "./components/User/UserDashboard";
@@ -95,7 +98,23 @@ ProtectedRoute.propTypes = {
   children: PropTypes.node.isRequired,
 };
 
+// ==================== Admin Only Route
+const AdminOnlyRoute = ({ children }) => {
+  const role = localStorage.getItem("role") || "user";
+  if (role !== "admin") {
+    return <Navigate to="/admin/book" replace />;
+  }
+  return children;
+};
+
+AdminOnlyRoute.propTypes = {
+  children: PropTypes.node.isRequired,
+};
+
 // ==================== All Routes
+const isAdminRole = (role) => role === "admin" || role === "staff";
+const isUserRole = (role) => role === "user";
+
 const getRouter = ({
   setIsLoggedIn,
   setRole,
@@ -128,36 +147,100 @@ const getRouter = ({
           <Route path="/cart" element={<Cart />} />
         </Route>
 
-        <Route
-          path="/admin"
-          element={
-            <ProtectedRoute
-              isAllowed={isLoggedIn && role === "admin"}
-              redirectTo="/login"
-            >
-              <AdminDashboard onLogout={handleLogout} />
-            </ProtectedRoute>
-          }
-        >
-          <Route index element={<Navigate to="users" replace />} />
-          <Route path="users" element={<AdminUserManager />} />
-          <Route path="menu" element={<AdminMenuManager />} />
-          <Route path="blog" element={<AdminBlogList />} />
-          <Route path="bookings" element={<AdminBookingList />} />
-          <Route path="contacts" element={<AdminContactList />} />
+          <Route
+            path="/admin"
+            element={
+              <ProtectedRoute
+                isAllowed={isLoggedIn && isAdminRole(role)}
+                redirectTo="/login"
+              >
+                <AdminDashboard onLogout={handleLogout} />
+              </ProtectedRoute>
+            }
+          >
+          {/* Admin routes - chỉ admin mới truy cập được */}
+          <Route index element={<Navigate to={role === "admin" ? "users" : "book"} replace />} />
+          <Route 
+            path="users" 
+            element={
+              <AdminOnlyRoute>
+                <AdminUserManager />
+              </AdminOnlyRoute>
+            } 
+          />
+          <Route 
+            path="menu" 
+            element={
+              <AdminOnlyRoute>
+                <AdminMenuManager />
+              </AdminOnlyRoute>
+            } 
+          />
+          <Route 
+            path="categories" 
+            element={
+              <AdminOnlyRoute>
+                <AdminCategoryManager />
+              </AdminOnlyRoute>
+            } 
+          />
+          <Route 
+            path="tables" 
+            element={
+              <AdminOnlyRoute>
+                <AdminTableManager />
+              </AdminOnlyRoute>
+            } 
+          />
+          <Route 
+            path="discounts" 
+            element={
+              <AdminOnlyRoute>
+                <AdminDiscountManager />
+              </AdminOnlyRoute>
+            } 
+          />
+          <Route 
+            path="blog" 
+            element={
+              <AdminOnlyRoute>
+                <AdminBlogList />
+              </AdminOnlyRoute>
+            } 
+          />
+          <Route 
+            path="bookings" 
+            element={
+              <AdminOnlyRoute>
+                <AdminBookingList />
+              </AdminOnlyRoute>
+            } 
+          />
+          <Route 
+            path="contacts" 
+            element={
+              <AdminOnlyRoute>
+                <AdminContactList />
+              </AdminOnlyRoute>
+            } 
+          />
+          {/* Staff routes - cả admin và staff đều truy cập được */}
+          <Route path="book" element={<BookUsers />} />
+          <Route path="history" element={<BookingHistory />} />
+          <Route path="profile" element={<UserProfile />} />
         </Route>
 
-        <Route
-          path="/user"
-          element={
-            <ProtectedRoute
-              isAllowed={isLoggedIn && role === "user"}
-              redirectTo="/login"
-            >
-              <UserDashboard onLogout={handleLogout} />
-            </ProtectedRoute>
-          }
-        >
+          <Route
+            path="/user"
+            element={
+              <ProtectedRoute
+                isAllowed={isLoggedIn && isUserRole(role)}
+                redirectTo="/login"
+              >
+                <UserDashboard onLogout={handleLogout} />
+              </ProtectedRoute>
+            }
+          >
           <Route index element={<Navigate to="book" replace />} />
           <Route path="book" element={<BookUsers />} />
           <Route path="history" element={<BookingHistory />} />

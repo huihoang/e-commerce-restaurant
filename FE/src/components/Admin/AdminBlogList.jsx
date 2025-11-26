@@ -2,6 +2,7 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import axios from "axios";
 import DropdownSelect from "@/components/common/DropdownSelect";
 import Pagination from "@/components/common/Pagination";
+import ConfirmModal from "@/components/common/ConfirmModal";
 import { useNotification } from "@/contexts/NotificationContext";
 
 const defaultCategories = ["Blog", "Hướng dẫn", "Tin tức"];
@@ -22,6 +23,10 @@ const AdminBlogManager = () => {
   const [sortOption, setSortOption] = useState("newest");
   const [currentPage, setCurrentPage] = useState(1);
   const ITEMS_PER_PAGE = 8;
+  const [confirmModal, setConfirmModal] = useState({
+    open: false,
+    blogId: null,
+  });
 
   const API_BASE_URL =
     import.meta.env.VITE_API_BASE_URL || "http://localhost:5000";
@@ -75,16 +80,28 @@ const AdminBlogManager = () => {
   };
 
   const handleDelete = async (id) => {
-    if (globalThis.confirm("Bạn có chắc chắn muốn xoá bài viết này không?")) {
-      try {
-        await axios.delete(`${API_BASE_URL}/api/blogs/${id}`);
-        showSuccess("Xóa bài viết thành công!");
-        fetchBlogs();
-      } catch (err) {
-        console.error("❌ Lỗi khi xoá bài viết:", err.message);
-        showError("Lỗi khi xóa bài viết. Vui lòng thử lại!");
-      }
+    try {
+      await axios.delete(`${API_BASE_URL}/api/blogs/${id}`);
+      showSuccess("Xóa bài viết thành công!");
+      fetchBlogs();
+    } catch (err) {
+      console.error("❌ Lỗi khi xoá bài viết:", err.message);
+      showError("Lỗi khi xóa bài viết. Vui lòng thử lại!");
     }
+  };
+
+  const openDeleteModal = (blogId) => {
+    setConfirmModal({ open: true, blogId });
+  };
+
+  const closeDeleteModal = () => {
+    setConfirmModal({ open: false, blogId: null });
+  };
+
+  const confirmDeleteBlog = async () => {
+    if (!confirmModal.blogId) return;
+    await handleDelete(confirmModal.blogId);
+    closeDeleteModal();
   };
 
   const openModal = () => {
@@ -171,6 +188,7 @@ const AdminBlogManager = () => {
     content.length > length ? `${content.substring(0, length)}…` : content;
 
   return (
+    <>
     <div className="space-y-6">
       <section className="rounded-3xl bg-gradient-to-r from-indigo-500 via-purple-500 to-pink-500 p-6 text-white shadow-2xl">
         <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
@@ -298,7 +316,7 @@ const AdminBlogManager = () => {
                     ✏️ Sửa
                   </button>
                   <button
-                    onClick={() => handleDelete(item._id)}
+                    onClick={() => openDeleteModal(item._id)}
                     className="flex-1 rounded-full bg-rose-600/10 px-4 py-2 text-sm font-semibold text-rose-600 transition hover:bg-rose-600 hover:text-white"
                   >
                     🗑 Xoá
@@ -318,8 +336,9 @@ const AdminBlogManager = () => {
         </div>
       </section>
 
+    </div>
       {isModalOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm">
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm p-0">
           <div className="w-full max-w-3xl rounded-3xl bg-white p-6 shadow-2xl sm:p-8">
             <div className="flex items-center justify-between">
               <h3 className="text-2xl font-semibold text-slate-900">
@@ -406,7 +425,16 @@ const AdminBlogManager = () => {
           </div>
         </div>
       )}
-    </div>
+      <ConfirmModal
+        open={confirmModal.open}
+        title="Xóa bài viết"
+        message="Bạn có chắc chắn muốn xoá bài viết này khỏi trang blog?"
+        confirmLabel="Xoá"
+        cancelLabel="Huỷ"
+        onConfirm={confirmDeleteBlog}
+        onCancel={closeDeleteModal}
+      />
+    </>
   );
 };
 
