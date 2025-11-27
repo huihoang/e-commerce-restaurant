@@ -480,7 +480,7 @@ const BookUser = () => {
               formData={formData}
               onSelectTable={handleSelectTable}
               tableOptions={tableOptions}
-              onChange={handleChange}
+                    onChange={handleChange}
             />
 
             <CustomerInfoSection formData={formData} onChange={handleChange} />
@@ -488,7 +488,7 @@ const BookUser = () => {
             <TakeawayInfoSection
               orderType={orderType}
               formData={formData}
-              onChange={handleChange}
+                      onChange={handleChange}
             />
 
             <NotesSection note={formData.note} onChange={handleChange} />

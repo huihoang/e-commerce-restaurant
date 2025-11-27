@@ -40,7 +40,7 @@ const getAllBooking = async (req, res) => {
 
         res.json(bookings);
     } catch (err) {
-        console.error("❌ Lỗi khi lấy danh sách đặt bàn:", err.message);
+        console.error("❌ Lỗi khi lấy danh sách đặt bàn:", err);
         res.status(500).json({ message: "Lỗi khi lấy danh sách đặt bàn." });
     }
 }
@@ -62,7 +62,7 @@ const updateBookingPay = async (req, res) => {
 
         res.json({ message: "Cập nhật thanh toán thành công!", booking });
     } catch (err) {
-        console.error("❌ Lỗi khi cập nhật thanh toán:", err.message);
+        console.error("❌ Lỗi khi cập nhật thanh toán:", err);
         res.status(500).json({ message: "Lỗi khi cập nhật thanh toán." });
     }
 }
@@ -81,7 +81,7 @@ const deleteBooking = async (req, res) => {
 
         res.json({ message: "Đơn đặt bàn đã được xóa thành công." });
     } catch (err) {
-        console.error("❌ Lỗi khi xóa đơn đặt bàn:", err.message);
+        console.error("❌ Lỗi khi xóa đơn đặt bàn:", err);
         res.status(500).json({ message: "Lỗi khi xóa đơn đặt bàn." });
     }
 }
@@ -221,7 +221,7 @@ const updateBooking = async (req, res) => {
             booking: updated,
         });
     } catch (err) {
-        console.error("❌ Lỗi khi cập nhật đơn đặt bàn:", err.message);
+        console.error("❌ Lỗi khi cập nhật đơn đặt bàn:", err);
         res.status(500).json({ message: "Lỗi khi cập nhật đơn đặt bàn." });
     }
 }

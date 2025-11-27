@@ -15,7 +15,7 @@ const getActiveCategories = async (_req, res) => {
       .lean();
     res.json(categories);
   } catch (err) {
-    console.error("❌ Lỗi khi lấy danh mục:", err.message);
+    console.error("❌ Lỗi khi lấy danh mục:", err);
     res.status(500).json({ message: "Không thể lấy danh sách danh mục." });
   }
 };
@@ -25,7 +25,7 @@ const getAllCategories = async (_req, res) => {
     const categories = await Category.find().sort({ createdAt: -1 }).lean();
     res.json(categories);
   } catch (err) {
-    console.error("❌ Lỗi khi lấy danh mục:", err.message);
+    console.error("❌ Lỗi khi lấy danh mục:", err);
     res.status(500).json({ message: "Không thể lấy danh sách danh mục." });
   }
 };
@@ -48,7 +48,7 @@ const createCategory = async (req, res) => {
     await category.save();
     res.status(201).json({ message: "Tạo danh mục thành công!", category });
   } catch (err) {
-    console.error("❌ Lỗi khi tạo danh mục:", err.message);
+    console.error("❌ Lỗi khi tạo danh mục:", err);
     res.status(500).json({ message: "Không thể tạo danh mục." });
   }
 };
@@ -70,7 +70,7 @@ const updateCategory = async (req, res) => {
     }
     res.json({ message: "Cập nhật danh mục thành công!", category: updated });
   } catch (err) {
-    console.error("❌ Lỗi khi cập nhật danh mục:", err.message);
+    console.error("❌ Lỗi khi cập nhật danh mục:", err);
     res.status(500).json({ message: "Không thể cập nhật danh mục." });
   }
 };
@@ -83,7 +83,7 @@ const deleteCategory = async (req, res) => {
     }
     res.json({ message: "Đã xoá danh mục." });
   } catch (err) {
-    console.error("❌ Lỗi khi xoá danh mục:", err.message);
+    console.error("❌ Lỗi khi xoá danh mục:", err);
     res.status(500).json({ message: "Không thể xoá danh mục." });
   }
 };

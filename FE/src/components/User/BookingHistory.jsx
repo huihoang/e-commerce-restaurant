@@ -9,8 +9,10 @@ import BookingTabs from "./BookingHistory/BookingTabs";
 import BookingFilters from "./BookingHistory/BookingFilters";
 import BookingHistoryList from "./BookingHistory/BookingHistoryList";
 import ConfirmModal from "@/components/common/ConfirmModal";
+import { useNotification } from "@/contexts/NotificationContext";
 
 const BookingHistory = () => {
+  const { showSuccess, showError } = useNotification();
   const [bookings, setBookings] = useState([]);
   const [loading, setLoading] = useState(true);
   const [isModalOpen, setIsModalOpen] = useState(false);
@@ -146,8 +148,10 @@ const BookingHistory = () => {
       setBookings((prevBookings) =>
         prevBookings.filter((booking) => booking._id !== bookingId)
       );
+      showSuccess("Đã xóa đặt bàn thành công!");
     } catch (err) {
       console.error("❌ Lỗi khi xóa đặt bàn:", err.message);
+      showError("Lỗi khi xóa đặt bàn!");
     }
   };
 

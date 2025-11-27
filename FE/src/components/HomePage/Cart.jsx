@@ -4,16 +4,17 @@ import { Link } from "react-router-dom";
 import axios from "axios";
 import { getCart, updateQuantity, clearCart, addToCart } from "@/utils/cart";
 import { useNotification } from "@/contexts/NotificationContext";
-import DropdownSelect from "@/components/common/DropdownSelect";
+import TableSelectionGrid from "@/components/common/TableSelectionGrid";
 
 const Cart = () => {
   const { showError, showSuccess } = useNotification();
+  const today = useMemo(() => new Date().toISOString().split("T")[0], []);
   const createInitialCustomer = useCallback(
     () => ({
       name: "",
       phone: "",
       email: "",
-      date: "",
+      date: today,
       time: "",
       people: 1,
       tableId: "",
@@ -21,7 +22,7 @@ const Cart = () => {
       deliveryAddress: "",
       note: "",
     }),
-    []
+    [today]
   );
   const [items, setItems] = useState([]);
   const [orderType, setOrderType] = useState("dine-in"); // "dine-in" hoặc "takeaway"
@@ -30,6 +31,7 @@ const Cart = () => {
   const [related, setRelated] = useState([]);
   const [bookings, setBookings] = useState([]); // Danh sách booking để check bàn đã đặt
   const [tables, setTables] = useState([]);
+  const [showTableResetModal, setShowTableResetModal] = useState(false);
   const sliderRef = useRef(null);
   const API_BASE_URL =
     import.meta.env.VITE_API_BASE_URL || "http://localhost:5000";
@@ -72,8 +74,8 @@ const Cart = () => {
 
   const isTableBusy = useCallback(
     (table, dateValue, timeValue) => {
-      if (!dateValue || !timeValue) return true;
-      const dateKey = dateValue.split("T")[0];
+      if (!table) return true;
+      const dateKey = (dateValue || today).split("T")[0];
       return bookings.some((booking) => {
         const bookingOrderType =
           booking.orderType || (booking.ship?.isShip ? "takeaway" : "dine-in");
@@ -82,19 +84,19 @@ const Cart = () => {
         if (bookingDate !== dateKey) return false;
         if (!matchBookingTable(booking, table)) return false;
         const isPending = !(booking.payment?.isPaid);
+        if (!timeValue) {
+          return isPending;
+        }
         const sameSlot = booking.time === timeValue;
         return isPending || sameSlot;
       });
     },
-    [bookings]
+    [bookings, today]
   );
 
   const getTableLabel = useCallback((table) => {
     if (!table) return "Bàn";
-    const baseName = table.name || `Bàn ${table.number}`;
-    const capacityLabel = `${table.capacity || 0} người`;
-    const areaLabel = table.area ? ` • ${table.area}` : "";
-    return `${baseName} (${capacityLabel})${areaLabel}`;
+    return table.name || `Bàn ${table.number}`;
   }, []);
 
   // ==================== Fetch bookings để check bàn đã đặt
@@ -115,14 +117,6 @@ const Cart = () => {
     };
     fetchBookings();
   }, [API_BASE_URL]);
-
-  useEffect(() => {
-    setCustomer((prev) => ({
-      ...prev,
-      tableId: "",
-      tableNumber: "",
-    }));
-  }, [customer.date, customer.time]);
 
   useEffect(() => {
     if (orderType !== "dine-in") {
@@ -147,8 +141,9 @@ const Cart = () => {
   }, [API_BASE_URL]);
 
   // ==================== Lọc bàn còn trống dựa trên ngày, giờ và số người
+  const effectiveDate = customer.date || today;
   const availableTables = useMemo(() => {
-    if (!customer.date || !customer.time || !customer.people) {
+    if (!customer.people) {
       return [];
     }
 
@@ -158,29 +153,36 @@ const Cart = () => {
       (table) =>
           Number(table.capacity || 0) >= Number(customer.people || 0)
       )
-      .filter(
-        (table) => !isTableBusy(table, customer.date, customer.time)
-      )
+      .filter((table) => !isTableBusy(table, effectiveDate, customer.time))
       .sort((a, b) => (a.number || 0) - (b.number || 0));
   }, [
     tables,
-    bookings,
-    customer.date,
+    effectiveDate,
     customer.time,
     customer.people,
     isTableBusy,
   ]);
 
-  // ==================== Tạo options cho DropdownSelect
-  const tableOptions = useMemo(() => {
-    if (availableTables.length === 0) {
-      return [];
+  useEffect(() => {
+    if (!customer.tableId) return;
+    const stillValid = availableTables.some(
+      (table) => table._id?.toString() === customer.tableId?.toString()
+    );
+    if (!stillValid) {
+      setCustomer((prev) => ({
+        ...prev,
+        tableId: "",
+        tableNumber: "",
+      }));
+      setShowTableResetModal(true);
     }
-    return availableTables.map((table) => ({
-      label: getTableLabel(table),
-      value: table._id,
-    }));
-  }, [availableTables, getTableLabel]);
+  }, [availableTables, customer.tableId, setCustomer]);
+
+  useEffect(() => {
+    if (showTableResetModal && availableTables.length > 0) {
+      setShowTableResetModal(false);
+    }
+  }, [availableTables.length, showTableResetModal]);
 
   useEffect(() => {
     setItems(getCart());
@@ -260,11 +262,11 @@ const Cart = () => {
     setItems(next);
   };
 
-  const handleSelectTable = (value) => {
-    const table = tableMap.get(value);
+  const handleSelectTable = (value, tableOverride) => {
+    const table = tableOverride || tableMap.get(value);
     setCustomer((prev) => ({
       ...prev,
-      tableId: value,
+      tableId: table?._id || value || "",
       tableNumber: table?.number?.toString() || "",
     }));
   };
@@ -303,7 +305,7 @@ const Cart = () => {
       bankCode: "",
       name: customer.name,
       phone: customer.phone,
-      date: customer.date || new Date().toISOString().split("T")[0],
+      date: customer.date || today,
       time: customer.time || new Date().toTimeString().split(" ")[0].slice(0, 5),
       ship: {
         isShip: orderType === "takeaway",
@@ -426,6 +428,7 @@ const Cart = () => {
           clearCart();
           setItems([]);
           setCustomer(createInitialCustomer());
+          setShowTableResetModal(false);
           setOrderType("dine-in");
           setPaymentMethod("bank");
         }
@@ -656,12 +659,74 @@ const Cart = () => {
 
                 {/* Thông tin cho "Ăn tại quán" */}
                 {orderType === "dine-in" && (
+                  <div className="space-y-4">
+                    <div className="p-4 border rounded-xl bg-white space-y-3">
+                      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
+                        <div>
+                          <p className="font-DM_sans font-semibold text-lg text-slate-800">
+                            🪑 Danh sách bàn trống
+                          </p>
+                          <p className="text-sm text-slate-500">
+                            Ngày {new Date(effectiveDate).toLocaleDateString("vi-VN")}
+                          </p>
+                        </div>
+                        <span className="text-sm font-semibold text-emerald-600">
+                          {availableTables.length} bàn phù hợp
+                        </span>
+                      </div>
+                      {!customer.people ? (
+                        <div className="w-full rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm text-slate-500">
+                          Vui lòng nhập số người
+                        </div>
+                      ) : availableTables.length === 0 ? (
+                        <div className="w-full rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-700">
+                          Không có bàn trống cho {customer.people} người vào ngày này.
+                        </div>
+                      ) : (
+                        <>
+                          <TableSelectionGrid
+                            tables={availableTables}
+                            selectedValue={customer.tableId}
+                            onSelect={(value, table) => handleSelectTable(value, table)}
+                            getValue={(table) => table._id}
+                            getLabel={getTableLabel}
+                            getSubLabel={(table) =>
+                              `${table.capacity || 0} người${
+                                table.location ? ` • ${table.location}` : ""
+                              }`
+                            }
+                            gridClassName="grid grid-cols-2 gap-3"
+                          />
+                          <p className="text-xs text-emerald-600">
+                            {customer.tableNumber
+                              ? `Đã chọn bàn ${customer.tableNumber}`
+                              : `Có ${availableTables.length} bàn trống phù hợp`}
+                          </p>
+                        </>
+                      )}
+                      {showTableResetModal && (
+                        <div className="rounded-2xl border border-amber-200 bg-amber-50 px-4 py-3 text-xs text-amber-700 flex flex-col gap-1">
+                          <p>
+                            Bàn bạn chọn trước đó không còn phù hợp với số người/khung giờ
+                            mới. Vui lòng chọn lại bàn khác.
+                          </p>
+                          <button
+                            type="button"
+                            onClick={() => setShowTableResetModal(false)}
+                            className="self-end rounded-full bg-amber-500 text-white px-3 py-1 font-semibold"
+                          >
+                            Đã hiểu
+                          </button>
+                        </div>
+                      )}
+                    </div>
+
                   <div className="p-4 border rounded-xl bg-gradient-to-br from-emerald-50 to-green-50">
                     <p className="font-DM_sans font-semibold mb-3">
-                      🏠 Thông tin đặt bàn
+                        📅 Thông tin đặt bàn
                     </p>
                     <div className="space-y-3">
-                      <div className="grid grid-cols-2 gap-3">
+                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                         <div>
                           <label className="block text-xs font-semibold text-slate-700 mb-1">
                             Ngày *
@@ -674,7 +739,7 @@ const Cart = () => {
                               onChange={(e) =>
                                 setCustomer((p) => ({ ...p, date: e.target.value }))
                               }
-                              min={new Date().toISOString().split("T")[0]}
+                                min={today}
                               onClick={(e) => e.target.showPicker?.()}
                             />
                           </div>
@@ -714,35 +779,7 @@ const Cart = () => {
                           }
                         />
                       </div>
-                      <div>
-                        <label className="block text-xs font-semibold text-slate-700 mb-1">
-                          Số bàn *
-                        </label>
-                        {customer.date && customer.time && customer.people ? (
-                          tableOptions.length > 0 ? (
-                          <>
-                            <DropdownSelect
-                              options={tableOptions}
-                                value={customer.tableId}
-                                onChange={handleSelectTable}
-                              placeholder="Chọn bàn"
-                              className="w-full"
-                            />
-                              <p className="mt-1 text-xs text-emerald-600">
-                                ✓ Có {tableOptions.length} bàn trống phù hợp
-                              </p>
-                            </>
-                          ) : (
-                            <div className="w-full h-10 border-2 rounded-lg px-3 bg-amber-50 text-amber-700 text-sm flex items-center">
-                              Không có bàn trống cho {customer.people} người vào thời điểm này
                             </div>
-                          )
-                        ) : (
-                          <div className="w-full h-10 border-2 rounded-lg px-3 bg-slate-50 text-slate-500 text-sm flex items-center">
-                            Vui lòng chọn ngày, giờ và số người trước
-                          </div>
-                        )}
-                      </div>
                     </div>
                   </div>
                 )}
@@ -767,7 +804,7 @@ const Cart = () => {
                               onChange={(e) =>
                                 setCustomer((p) => ({ ...p, date: e.target.value }))
                               }
-                              min={new Date().toISOString().split("T")[0]}
+                              min={today}
                               onClick={(e) => e.target.showPicker?.()}
                             />
                           </div>
@@ -872,8 +909,7 @@ const Cart = () => {
                       <div>
                         <p className="font-semibold">Tiền mặt khi nhận</p>
                         <p className="text-sm text-slate-600">
-                          Không áp dụng giảm giá. Đơn từ 500.000đ cần đặt cọc trước
-                          30%.
+                          Không áp dụng giảm giá.
                         </p>
                       </div>
                     </label>

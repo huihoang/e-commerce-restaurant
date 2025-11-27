@@ -5,7 +5,7 @@ const getAllTables = async (req, res) => {
     const tables = await Table.find().sort({ number: 1 });
     res.json(tables);
   } catch (err) {
-    console.error('❌ Lỗi khi lấy danh sách bàn:', err.message);
+    console.error('❌ Lỗi khi lấy danh sách bàn:', err);
     res.status(500).json({ message: 'Lỗi khi lấy danh sách bàn.' });
   }
 };
@@ -18,7 +18,7 @@ const getTableById = async (req, res) => {
     }
     res.json(table);
   } catch (err) {
-    console.error('❌ Lỗi khi lấy thông tin bàn:', err.message);
+    console.error('❌ Lỗi khi lấy thông tin bàn:', err);
     res.status(500).json({ message: 'Lỗi khi lấy thông tin bàn.' });
   }
 };
@@ -47,7 +47,7 @@ const createTable = async (req, res) => {
     await table.save();
     res.status(201).json({ message: 'Tạo bàn thành công!', table });
   } catch (err) {
-    console.error('❌ Lỗi khi tạo bàn:', err.message);
+    console.error('❌ Lỗi khi tạo bàn:', err);
     res.status(500).json({ message: 'Không thể tạo bàn.' });
   }
 };
@@ -81,7 +81,7 @@ const updateTable = async (req, res) => {
 
     res.json({ message: 'Cập nhật bàn thành công!', table: updated });
   } catch (err) {
-    console.error('❌ Lỗi khi cập nhật bàn:', err.message);
+    console.error('❌ Lỗi khi cập nhật bàn:', err);
     res.status(500).json({ message: 'Không thể cập nhật bàn.' });
   }
 };
@@ -94,7 +94,7 @@ const deleteTable = async (req, res) => {
     }
     res.json({ message: 'Xóa bàn thành công!' });
   } catch (err) {
-    console.error('❌ Lỗi khi xóa bàn:', err.message);
+    console.error('❌ Lỗi khi xóa bàn:', err);
     res.status(500).json({ message: 'Không thể xóa bàn.' });
   }
 };

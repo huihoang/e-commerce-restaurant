@@ -74,7 +74,7 @@ const createDiscount = async (req, res) => {
     await discount.save();
     res.status(201).json({ message: "Tạo mã giảm giá thành công!", discount });
   } catch (err) {
-    console.error("❌ Lỗi khi tạo mã giảm giá:", err.message);
+    console.error("❌ Lỗi khi tạo mã giảm giá:", err);
     res.status(500).json({ message: "Không thể tạo mã giảm giá." });
   }
 };
@@ -87,7 +87,7 @@ const getAllDiscounts = async (req, res) => {
       .lean();
     res.json(discounts);
   } catch (err) {
-    console.error("❌ Lỗi khi lấy danh sách mã giảm giá:", err.message);
+    console.error("❌ Lỗi khi lấy danh sách mã giảm giá:", err);
     res.status(500).json({ message: "Không thể lấy danh sách mã giảm giá." });
   }
 };
@@ -108,7 +108,7 @@ const getActiveDiscounts = async (_req, res) => {
       .lean();
     res.json(discounts);
   } catch (err) {
-    console.error("❌ Lỗi khi lấy mã giảm giá:", err.message);
+    console.error("❌ Lỗi khi lấy mã giảm giá:", err);
     res.status(500).json({ message: "Không thể lấy mã giảm giá." });
   }
 };
@@ -135,7 +135,7 @@ const validateDiscount = async (req, res) => {
     }
     res.json({ message: "Mã giảm giá hợp lệ", discount });
   } catch (err) {
-    console.error("❌ Lỗi khi kiểm tra mã giảm giá:", err.message);
+    console.error("❌ Lỗi khi kiểm tra mã giảm giá:", err);
     res.status(500).json({ message: "Không thể kiểm tra mã giảm giá." });
   }
 };
@@ -187,7 +187,7 @@ const updateDiscount = async (req, res) => {
     }
     res.json({ message: "Cập nhật mã giảm giá thành công!", discount: updated });
   } catch (err) {
-    console.error("❌ Lỗi khi cập nhật mã giảm giá:", err.message);
+    console.error("❌ Lỗi khi cập nhật mã giảm giá:", err);
     res.status(500).json({ message: "Không thể cập nhật mã giảm giá." });
   }
 };
@@ -200,7 +200,7 @@ const deleteDiscount = async (req, res) => {
     }
     res.json({ message: "Đã xoá mã giảm giá." });
   } catch (err) {
-    console.error("❌ Lỗi khi xoá mã giảm giá:", err.message);
+    console.error("❌ Lỗi khi xoá mã giảm giá:", err);
     res.status(500).json({ message: "Không thể xoá mã giảm giá." });
   }
 };

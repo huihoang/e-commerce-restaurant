@@ -1,9 +1,12 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import axios from "axios";
-import DropdownSelect from "@/components/common/DropdownSelect";
 import Pagination from "@/components/common/Pagination";
 import ConfirmModal from "@/components/common/ConfirmModal";
 import { useNotification } from "@/contexts/NotificationContext";
+import MenuHeroSection from "@/components/Admin/AdminMenuManager/MenuHeroSection";
+import MenuFiltersBar from "@/components/Admin/AdminMenuManager/MenuFiltersBar";
+import MenuCardsGrid from "@/components/Admin/AdminMenuManager/MenuCardsGrid";
+import MenuFormModal from "@/components/Admin/AdminMenuManager/MenuFormModal";
 
 const categoryColorMap = {
   "Bữa Sáng": "bg-amber-100 text-amber-700",
@@ -12,20 +15,19 @@ const categoryColorMap = {
   "Tráng Miệng": "bg-rose-100 text-rose-700",
 };
 
-const defaultCategories = ["Bữa Sáng", "Bữa Trưa", "Đồ Uống", "Tráng Miệng"];
-
 const AdminMenuManager = () => {
   const { showSuccess, showError } = useNotification();
   const [menuItems, setMenuItems] = useState([]);
   const [categories, setCategories] = useState([]);
-  const [form, setForm] = useState({
+  const initialFormState = {
     name: "",
     price: "",
     info: "",
     image: "",
     category: "",
     discountPercent: 0,
-  });
+  };
+  const [form, setForm] = useState(initialFormState);
   const [editId, setEditId] = useState(null);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [searchTerm, setSearchTerm] = useState("");
@@ -84,7 +86,7 @@ const AdminMenuManager = () => {
       } else {
         await axios.post(`${API_BASE_URL}/api/menus`, form);
       }
-      setForm({ name: "", price: "", info: "", image: "", category: "", discountPercent: 0 });
+      setForm(initialFormState);
       setEditId(null);
       setIsModalOpen(false);
       showSuccess(editId ? "Cập nhật món thành công!" : "Thêm món mới thành công!");
@@ -133,14 +135,15 @@ const AdminMenuManager = () => {
     closeDeleteModal();
   };
 
-  const openModal = () => {
-    setForm({ name: "", price: "", info: "", image: "", category: "" });
+  const handleOpenModal = () => {
+    setForm(initialFormState);
     setEditId(null);
     setIsModalOpen(true);
   };
 
-  const closeModal = () => {
+  const handleCloseModal = () => {
     setIsModalOpen(false);
+    setEditId(null);
   };
 
   const categoryFilterOptions = useMemo(() => {
@@ -232,302 +235,59 @@ const AdminMenuManager = () => {
     return filteredMenu.slice(start, start + ITEMS_PER_PAGE);
   }, [filteredMenu, currentPage]);
 
+  const heroStats = useMemo(() => {
+    return {
+      totalItems: menuItems.length,
+      categoryCount: new Set(menuItems.map((m) => m.category)).size,
+      featuredText: filteredMenu.slice(0, 3).map((m) => m.name).join(", ") || "—",
+    };
+  }, [menuItems, filteredMenu]);
+
   return (
     <>
-    <div className="space-y-6">
-      <section className="rounded-3xl bg-gradient-to-r from-orange-500 via-red-500 to-pink-500 p-6 text-white shadow-2xl">
-        <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
-          <div>
-            <p className="text-sm uppercase tracking-[0.3em] text-white/70">
-              Trung tâm menu
-            </p>
-            <h1 className="mt-1 text-3xl font-semibold">
-              Quản lý món ăn & giá bán
-            </h1>
-            <p className="mt-2 text-sm text-white/80">
-              Cập nhật menu theo mùa, quản lý hình ảnh và giá chỉ với một cú
-              click.
-            </p>
-          </div>
-        <button
-          onClick={openModal}
-            className="inline-flex items-center justify-center rounded-full bg-white/15 px-5 py-2 text-sm font-semibold uppercase tracking-wide text-white outline-none transition hover:bg-white/25"
-        >
-            ➕ Thêm món mới
-        </button>
-        </div>
+      <div className="space-y-6">
+        <MenuHeroSection stats={heroStats} onAddItem={handleOpenModal} />
 
-        <div className="mt-6 grid grid-cols-1 gap-3 text-center sm:grid-cols-3">
-          {[
-            {
-              label: "Tổng món ăn",
-              value: menuItems.length,
-              accent: "text-white",
-            },
-            {
-              label: "Danh mục",
-              value: new Set(menuItems.map((m) => m.category)).size,
-              accent: "text-yellow-200",
-            },
-            {
-              label: "Món nổi bật",
-              value: filteredMenu.slice(0, 3).map((m) => m.name).join(", ") || "—",
-              accent: "text-white",
-            },
-          ].map((stat) => (
-            <div
-              key={stat.label}
-              className="rounded-2xl border border-white/20 bg-white/10 px-4 py-3 backdrop-blur-sm"
-            >
-              <p className="text-xs uppercase tracking-widest text-white/80">
-                {stat.label}
-              </p>
-              <p className={`mt-1 text-xl font-semibold ${stat.accent}`}>
-                {stat.value}
-              </p>
-            </div>
-          ))}
-        </div>
-      </section>
-
-      <section className="rounded-3xl border border-slate-100 bg-white p-4 shadow-xl shadow-slate-200/60 sm:p-6">
-        <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
-          <div className="flex flex-1 flex-col gap-3 sm:flex-row">
-            <div className="relative flex-1">
-              <input
-                type="text"
-                placeholder="Tìm món theo tên hoặc mô tả..."
-                value={searchTerm}
-                onChange={(e) => setSearchTerm(e.target.value)}
-                className="w-full rounded-2xl border border-slate-200 px-4 py-2 pl-11 text-sm text-slate-700 shadow-inner focus:border-orange-500 focus:outline-none"
-              />
-              <span className="pointer-events-none absolute left-4 top-1/2 -translate-y-1/2 text-lg">
-                🔎
-              </span>
-            </div>
-            <DropdownSelect
-              options={categoryFilterOptions}
-              value={categoryFilter}
-              onChange={setCategoryFilter}
-              placeholder="Danh mục"
-              className="w-full sm:w-48"
-            />
-          </div>
-          <div className="w-full lg:w-52">
-            <DropdownSelect
-              options={sortOptions}
-              value={sortOption}
-              onChange={setSortOption}
-              placeholder="Sắp xếp"
-            />
-          </div>
-        </div>
-
-        <div className="mt-6 grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
-          {paginatedMenu.length === 0 && (
-            <div className="col-span-full rounded-2xl border border-dashed border-slate-200 p-10 text-center text-slate-500">
-              Không tìm thấy món ăn nào phù hợp. Hãy thử từ khóa khác.
-            </div>
-          )}
-          {paginatedMenu.map((item) => (
-            <article
-              key={item._id}
-              className="group relative flex flex-col overflow-hidden rounded-3xl border border-slate-100 bg-white shadow-lg shadow-slate-200 transition hover:-translate-y-1 hover:shadow-2xl"
-            >
-              <div className="relative h-44 w-full flex-shrink-0 overflow-hidden">
-              <img
-                  src={item.image || "/placeholder.png"}
-                alt={item.name}
-                  className="h-full w-full object-cover transition duration-500 group-hover:scale-110"
-                />
-                <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-black/10 to-transparent" />
-                <span
-                  className={`absolute left-4 top-4 rounded-full px-3 py-1 text-xs font-semibold text-white shadow ${
-                    categoryColorMap[item.category] || "bg-slate-900/70"
-                  }`}
-                >
-                  {item.category || "Chưa phân loại"}
-                </span>
-              </div>
-              <div className="flex flex-col gap-3 p-5 flex-grow">
-                <div>
-                  <h3 className="text-lg font-semibold text-slate-900">
-                    {item.name}
-                  </h3>
-                  <p className="text-sm text-slate-500 line-clamp-2 mt-1">
-                    {item.info || "Chưa có mô tả"}
-                  </p>
-                </div>
-                <div className="mt-1">
-                  <span className="rounded-full bg-emerald-50 px-3 py-1 text-sm font-semibold text-emerald-600">
-                {formatPrice(item.price)}
-                  </span>
-                </div>
-                <div className="flex items-center justify-between text-xs text-slate-400">
-                  <span>
-                    Cập nhật:{" "}
-                    {(item.updatedAt &&
-                      new Date(item.updatedAt).toLocaleDateString("vi-VN")) ||
-                      "—"}
-                  </span>
-                  <span>ID: {item._id.slice(-6)}</span>
-                </div>
-                <div className="mt-auto flex gap-2 pt-2">
-                <button
-                  onClick={() => handleEdit(item)}
-                    className="flex-1 rounded-full bg-blue-600/10 px-4 py-2 text-sm font-semibold text-blue-600 transition hover:bg-blue-600 hover:text-white"
-                >
-                    ✏️ Sửa
-                </button>
-                <button
-                  onClick={() => openDeleteModal(item._id)}
-                    className="flex-1 rounded-full bg-rose-600/10 px-4 py-2 text-sm font-semibold text-rose-600 transition hover:bg-rose-600 hover:text-white"
-                >
-                    🗑 Xoá
-                </button>
-              </div>
-            </div>
-            </article>
-          ))}
-        </div>
-
-        <div className="mt-6">
-          <Pagination
-            currentPage={currentPage}
-            totalPages={totalPages}
-            onPageChange={setCurrentPage}
+        <section className="rounded-3xl border border-slate-100 bg-white p-4 shadow-xl shadow-slate-200/60 sm:p-6">
+          <MenuFiltersBar
+            searchTerm={searchTerm}
+            onSearchChange={setSearchTerm}
+            categoryFilter={categoryFilter}
+            categoryOptions={categoryFilterOptions}
+            onCategoryChange={setCategoryFilter}
+            sortOption={sortOption}
+            sortOptions={sortOptions}
+            onSortChange={setSortOption}
           />
-      </div>
-      </section>
 
-    </div>
-      {isModalOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm p-0">
-          <div className="w-full max-w-2xl rounded-3xl bg-white p-6 shadow-2xl sm:p-8">
-            <div className="flex items-center justify-between">
-              <h3 className="text-2xl font-semibold text-slate-900">
-              {editId ? "Chỉnh sửa món" : "Thêm món mới"}
-            </h3>
-              <button
-                onClick={closeModal}
-                className="rounded-full bg-slate-100 p-2 text-slate-500 hover:bg-slate-200"
-              >
-                ✕
-              </button>
-            </div>
-            <form onSubmit={handleSubmit} className="mt-6 space-y-4">
-              <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-                <div>
-                  <label className="text-xs font-semibold uppercase tracking-wide text-slate-500">
-                    Tên món
-                  </label>
-              <input
-                name="name"
-                    placeholder="Ví dụ: Bò lúc lắc"
-                value={form.name}
-                onChange={handleChange}
-                    required
-                    className="mt-1 w-full rounded-2xl border border-slate-200 px-4 py-2 text-sm text-slate-800 shadow-inner focus:border-orange-500 focus:outline-none"
-              />
-                </div>
-                <div>
-                  <label className="text-xs font-semibold uppercase tracking-wide text-slate-500">
-                    Giá (VNĐ)
-                  </label>
-              <input
-                name="price"
-                    type="number"
-                    min="0"
-                    placeholder="Ví dụ: 25000"
-                value={form.price}
-                onChange={handleChange}
-                    required
-                    className="mt-1 w-full rounded-2xl border border-slate-200 px-4 py-2 text-sm text-slate-800 shadow-inner focus:border-orange-500 focus:outline-none"
-              />
-                </div>
-                <div>
-                  <label className="text-xs font-semibold uppercase tracking-wide text-slate-500">
-                    Giảm giá (%)
-                  </label>
-              <input
-                name="discountPercent"
-                    type="number"
-                    min="0"
-                    max="100"
-                    placeholder="Ví dụ: 10 (10%)"
-                value={form.discountPercent}
-                onChange={handleChange}
-                    className="mt-1 w-full rounded-2xl border border-slate-200 px-4 py-2 text-sm text-slate-800 shadow-inner focus:border-orange-500 focus:outline-none"
-              />
-                  <p className="mt-1 text-xs text-slate-500">
-                    Nhập phần trăm giảm giá (0-100). Để trống hoặc 0 = không giảm giá.
-                  </p>
-                </div>
-              </div>
-              <div>
-                <label className="text-xs font-semibold uppercase tracking-wide text-slate-500">
-                  Mô tả ngắn
-                </label>
-                <textarea
-                name="info"
-                  rows={3}
-                  placeholder="Hương vị, thành phần chính..."
-                value={form.info}
-                onChange={handleChange}
-                  className="mt-1 w-full rounded-2xl border border-slate-200 px-4 py-2 text-sm text-slate-800 shadow-inner focus:border-orange-500 focus:outline-none"
-              />
-              </div>
-              <div>
-                <label className="text-xs font-semibold uppercase tracking-wide text-slate-500">
-                  Link hình ảnh
-                </label>
-              <input
-                name="image"
-                  placeholder="https://..."
-                value={form.image}
-                onChange={handleChange}
-                  className="mt-1 w-full rounded-2xl border border-slate-200 px-4 py-2 text-sm text-slate-800 shadow-inner focus:border-orange-500 focus:outline-none"
-                />
-              </div>
-                <div>
-                  <label className="text-xs font-semibold uppercase tracking-wide text-slate-500">
-                    Danh mục
-                  </label>
-                {categorySelectOptions.length === 0 ? (
-                  <div className="mt-1 rounded-2xl border border-dashed border-slate-300 px-4 py-2 text-sm text-slate-500">
-                    Chưa có danh mục. Hãy tạo tại trang Quản Lý Danh Mục trước.
-                  </div>
-                ) : (
-                  <DropdownSelect
-                    options={categorySelectOptions}
-                    value={form.category}
-                    onChange={(value) =>
-                      setForm((prev) => ({ ...prev, category: value }))
-                    }
-                    placeholder="Vui lòng chọn danh mục"
-                    className="mt-1"
-                  />
-                )}
-              </div>
-              <div className="flex flex-col gap-3 sm:flex-row sm:justify-end">
-                <button
-                  type="button"
-                  onClick={closeModal}
-                  className="rounded-full border border-slate-200 px-5 py-2 text-sm font-semibold text-slate-600 transition hover:bg-slate-50"
-                >
-                  Huỷ bỏ
-                </button>
-                <button
-                  type="submit"
-                  className="rounded-full bg-gradient-to-r from-orange-500 to-pink-500 px-6 py-2 text-sm font-semibold text-white shadow-lg shadow-orange-200 transition hover:scale-[1.01]"
-                >
-                  {editId ? "Lưu thay đổi" : "Thêm món"}
-                </button>
-              </div>
-            </form>
+          <MenuCardsGrid
+            items={paginatedMenu}
+            formatPrice={formatPrice}
+            categoryColorMap={categoryColorMap}
+            onEdit={handleEdit}
+            onDelete={openDeleteModal}
+          />
+
+          <div className="mt-6">
+            <Pagination
+              currentPage={currentPage}
+              totalPages={totalPages}
+              onPageChange={setCurrentPage}
+            />
           </div>
-        </div>
-      )}
+        </section>
+      </div>
+
+      <MenuFormModal
+        isOpen={isModalOpen}
+        isEditing={Boolean(editId)}
+        formData={form}
+        onChange={handleChange}
+        onClose={handleCloseModal}
+        onSubmit={handleSubmit}
+        categoryOptions={categorySelectOptions}
+        onCategorySelect={(value) => setForm((prev) => ({ ...prev, category: value }))}
+      />
       <ConfirmModal
         open={confirmModal.open}
         title="Xóa món ăn"

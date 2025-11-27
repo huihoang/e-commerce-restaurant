@@ -2,12 +2,13 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import axios from "axios";
 import { useNotification } from "@/contexts/NotificationContext";
-import DropdownSelect from "@/components/common/DropdownSelect";
+import TableSelectionGrid from "@/components/common/TableSelectionGrid";
 
 const Book = () => {
   const { showSuccess, showError } = useNotification();
   // ==================== All Hooks
-  const [date, setDate] = useState("");
+  const today = useMemo(() => new Date().toISOString().split("T")[0], []);
+  const [date, setDate] = useState(() => today);
   const [time, setTime] = useState("");
   const [name, setName] = useState("");
   const [phone, setPhone] = useState("");
@@ -21,6 +22,7 @@ const Book = () => {
   const [paymentMethod, setPaymentMethod] = useState("bank"); // "bank" hoặc "cash" (chỉ khi có món)
   const [bookings, setBookings] = useState([]); // Danh sách booking để check bàn đã đặt
   const [tables, setTables] = useState([]);
+  const [showTableResetModal, setShowTableResetModal] = useState(false);
   const API_BASE_URL =
     import.meta.env.VITE_API_BASE_URL || "http://localhost:5000";
 
@@ -31,14 +33,14 @@ const Book = () => {
 
   const isTableBusy = useCallback(
     (table, dateValue, timeValue) => {
-      if (!dateValue || !timeValue || !table) return true;
-      const dateKey = dateValue.split("T")[0];
+      if (!table) return true;
+      const effectiveDateKey = (dateValue || today).split("T")[0];
       return bookings.some((booking) => {
         const bookingOrderType =
           booking.orderType || (booking.ship?.isShip ? "takeaway" : "dine-in");
         if (bookingOrderType !== "dine-in") return false;
         const bookingDate = (booking.date || "").split("T")[0];
-        if (bookingDate !== dateKey) return false;
+        if (bookingDate !== effectiveDateKey) return false;
         // Check by tableNumber
         if (booking.tableNumber && table.number) {
           if (booking.tableNumber.toString() !== table.number.toString()) {
@@ -47,13 +49,16 @@ const Book = () => {
       } else {
           return false;
         }
-        // Bàn bận nếu: chưa thanh toán HOẶC cùng khung giờ
+        // Bàn bận nếu: chưa thanh toán (giữ bàn cả ngày) hoặc cùng khung giờ
         const isPending = !(booking.payment?.isPaid);
+        if (!timeValue) {
+          return isPending;
+        }
         const sameSlot = booking.time === timeValue;
         return isPending || sameSlot;
     });
     },
-    [bookings]
+    [bookings, today]
   );
 
   // ==================== Fetch bookings để check bàn đã đặt
@@ -76,38 +81,39 @@ const Book = () => {
   }, [API_BASE_URL]);
 
   // ==================== Lọc bàn còn trống dựa trên ngày, giờ và số người
+  const effectiveDate = date || today;
+
   const availableTables = useMemo(() => {
-    if (!date || !time || !person) {
+    if (!person) {
       return [];
     }
     return tables
       .filter((table) => table && table.isActive)
       .filter((table) => Number(table.capacity || 0) >= Number(person || 0))
-      .filter((table) => !isTableBusy(table, date, time))
+      .filter((table) => !isTableBusy(table, effectiveDate, time))
       .sort((a, b) => {
         const numA = Number(a.number) || 0;
         const numB = Number(b.number) || 0;
         return numA - numB;
       });
-  }, [tables, bookings, date, time, person, isTableBusy]);
+  }, [tables, effectiveDate, time, person, isTableBusy]);
 
-  // ==================== Tạo options cho DropdownSelect
-  const tableOptions = useMemo(() => {
-    if (availableTables.length === 0) {
-      return [
-        {
-          label: "Không có bàn trống",
-          value: "",
-        },
-      ];
+  useEffect(() => {
+    if (!tableNumber) return;
+    const stillValid = availableTables.some(
+      (table) => table.number?.toString() === tableNumber
+    );
+    if (!stillValid) {
+      setTableNumber("");
+      setShowTableResetModal(true);
     }
-    return availableTables.map((table) => ({
-      label: `Bàn ${table.number} (${table.capacity || 0} người)${
-        table.location ? ` • ${table.location}` : ""
-      }`,
-      value: table.number.toString(),
-    }));
-  }, [availableTables]);
+  }, [availableTables, tableNumber]);
+
+  useEffect(() => {
+    if (showTableResetModal && availableTables.length > 0) {
+      setShowTableResetModal(false);
+    }
+  }, [availableTables.length, showTableResetModal]);
 
   useEffect(() => {
     fetch(`${API_BASE_URL}/api/menus`)
@@ -128,10 +134,6 @@ const Book = () => {
       })
       .catch((err) => console.error("Lỗi fetch tables:", err));
   }, [API_BASE_URL]);
-
-  useEffect(() => {
-    setTableNumber("");
-  }, [date, time]);
 
   // ==================== All Functions
   const handleToggleDish = (dish) => {
@@ -201,7 +203,7 @@ const Book = () => {
 
   // ==================== Submit Function
   const resetForm = useCallback(() => {
-    setDate("");
+    setDate(today);
     setTime("");
     setName("");
     setPhone("");
@@ -211,7 +213,8 @@ const Book = () => {
     setNote("");
     setSelectedDishes([]);
     setPaymentMethod("bank");
-  }, []);
+    setShowTableResetModal(false);
+  }, [today]);
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -378,6 +381,114 @@ const Book = () => {
           className="w-full max-w-[800px] mx-auto px-6 sm:px-8 lg:px-12 p-10 mt-12 shadow-2xl rounded-2xl"
         >
           <div className="flex gap-6 flex-col">
+            {/* Danh sách bàn giống staff */}
+            <div className="rounded-2xl border border-slate-200 bg-white p-6 space-y-3">
+              <div className="flex items-center justify-between">
+                <div>
+                  <h3 className="font-DM_sans font-bold text-xl text-slate-800">
+                    🪑 Danh sách bàn trống
+                  </h3>
+                  <p className="text-sm text-slate-500">
+                    Ngày {new Date(effectiveDate).toLocaleDateString("vi-VN")}
+                  </p>
+                </div>
+                <span className="text-sm font-semibold text-emerald-600">
+                  {availableTables.length} bàn phù hợp
+                </span>
+              </div>
+              {!person ? (
+                <div className="w-full rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm text-slate-500">
+                  Vui lòng nhập số người
+                </div>
+              ) : availableTables.length === 0 ? (
+                <div className="w-full rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-700">
+                  Không có bàn trống cho {person} người vào ngày này.
+                </div>
+              ) : (
+                <>
+                  <TableSelectionGrid
+                    tables={availableTables}
+                    selectedValue={tableNumber}
+                    onSelect={(value) => setTableNumber(value || "")}
+                    getValue={(table) => table.number?.toString()}
+                    getLabel={(table) => table.name || `Bàn ${table.number}`}
+                    getSubLabel={(table) =>
+                      `${table.capacity || 0} người${
+                        table.location ? ` • ${table.location}` : ""
+                      }`
+                    }
+                  />
+                  <p className="text-xs text-emerald-600">
+                    {tableNumber
+                      ? `Đã chọn bàn ${tableNumber}`
+                      : "Chọn một bàn để tiếp tục"}
+                  </p>
+                </>
+              )}
+                {showTableResetModal && (
+                  <div className="rounded-2xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-700 flex flex-col gap-2 mt-3">
+                    <p>
+                      Bàn bạn chọn trước đó không còn phù hợp với số người hiện tại. Vui
+                      lòng chọn lại bàn khác.
+                    </p>
+                    <button
+                      type="button"
+                      onClick={() => setShowTableResetModal(false)}
+                      className="self-end rounded-full px-4 py-1 text-xs font-semibold text-white bg-amber-500 hover:bg-amber-600"
+                    >
+                      Đã hiểu
+                    </button>
+                  </div>
+                )}
+            </div>
+
+            {/* Bộ lọc ngày/giờ/khách */}
+            <div className="rounded-2xl border border-slate-200 bg-gradient-to-br from-emerald-50 to-green-50 p-6 space-y-4">
+              <h3 className="font-DM_sans font-bold text-xl text-slate-800">
+                📅 Thông tin đặt bàn
+              </h3>
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                <div>
+                  <label className="block text-sm font-semibold text-slate-700 mb-2">
+                    Ngày <span className="text-red-500">*</span>
+                  </label>
+                  <input
+                    type="date"
+                    value={date}
+                    onChange={(e) => setDate(e.target.value)}
+                    min={today}
+                    className="w-full h-12 rounded-xl border-2 border-slate-200 px-4 focus:border-emerald-500 focus:outline-none focus:ring-2 focus:ring-emerald-200 cursor-pointer"
+                    onClick={(e) => e.target.showPicker?.()}
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-semibold text-slate-700 mb-2">
+                    Giờ
+                  </label>
+                  <input
+                    type="time"
+                    value={time}
+                    onChange={(e) => setTime(e.target.value)}
+                    className="w-full h-12 rounded-xl border-2 border-slate-200 px-4 focus:border-emerald-500 focus:outline-none focus:ring-2 focus:ring-emerald-200 cursor-pointer"
+                    onClick={(e) => e.target.showPicker?.()}
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-semibold text-slate-700 mb-2">
+                    Số người <span className="text-red-500">*</span>
+                  </label>
+                  <input
+                    type="number"
+                    min="1"
+                    value={person}
+                    onChange={(e) => setPerson(Number(e.target.value) || 1)}
+                    className="w-full h-12 rounded-xl border-2 border-slate-200 px-4 focus:border-emerald-500 focus:outline-none focus:ring-2 focus:ring-emerald-200"
+                    placeholder="Số người"
+                  />
+                </div>
+              </div>
+            </div>
+
             {/* Thông tin khách hàng */}
             <div className="space-y-4">
               <h3 className="font-DM_sans font-bold text-xl text-slate-800">
@@ -419,86 +530,6 @@ const Book = () => {
                     className="w-full h-12 rounded-xl border-2 border-slate-200 px-4 focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-200"
                     placeholder="Nhập email"
                   />
-                </div>
-              </div>
-            </div>
-
-            {/* Thông tin đặt bàn */}
-            <div className="p-6 border rounded-2xl bg-gradient-to-br from-emerald-50 to-green-50 space-y-4">
-              <h3 className="font-DM_sans font-bold text-xl text-slate-800">
-                🏠 Thông tin đặt bàn
-              </h3>
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div>
-                  <label className="block text-sm font-semibold text-slate-700 mb-2">
-                    Ngày <span className="text-red-500">*</span>
-                  </label>
-                  <div className="relative">
-                    <input
-                      type="date"
-                      value={date}
-                      onChange={(e) => setDate(e.target.value)}
-                      min={new Date().toISOString().split("T")[0]}
-                      className="w-full h-12 rounded-xl border-2 border-slate-200 px-4 focus:border-emerald-500 focus:outline-none focus:ring-2 focus:ring-emerald-200 cursor-pointer"
-                      onClick={(e) => e.target.showPicker?.()}
-                    />
-                  </div>
-                </div>
-                <div>
-                  <label className="block text-sm font-semibold text-slate-700 mb-2">
-                    Giờ <span className="text-red-500">*</span>
-                  </label>
-                  <div className="relative">
-                    <input
-                      type="time"
-                      value={time}
-                      onChange={(e) => setTime(e.target.value)}
-                      className="w-full h-12 rounded-xl border-2 border-slate-200 px-4 focus:border-emerald-500 focus:outline-none focus:ring-2 focus:ring-emerald-200 cursor-pointer"
-                      onClick={(e) => e.target.showPicker?.()}
-                    />
-                  </div>
-                </div>
-                <div>
-                  <label className="block text-sm font-semibold text-slate-700 mb-2">
-                    Số người <span className="text-red-500">*</span>
-                  </label>
-                  <input
-                    type="number"
-                    min="1"
-                    value={person}
-                    onChange={(e) => setPerson(Number(e.target.value) || 1)}
-                    className="w-full h-12 rounded-xl border-2 border-slate-200 px-4 focus:border-emerald-500 focus:outline-none focus:ring-2 focus:ring-emerald-200"
-                    placeholder="Số người"
-                  />
-                </div>
-                <div>
-                  <label className="block text-sm font-semibold text-slate-700 mb-2">
-                    Số bàn <span className="text-red-500">*</span>
-                  </label>
-                  {date && time && person ? (
-                    tableOptions.length > 0 ? (
-                    <>
-                      <DropdownSelect
-                        options={tableOptions}
-                        value={tableNumber}
-                        onChange={setTableNumber}
-                        placeholder="Chọn bàn"
-                        className="w-full"
-                      />
-                        <p className="mt-2 text-xs text-emerald-600">
-                          ✓ Có {tableOptions.length} bàn phù hợp
-                        </p>
-                      </>
-                    ) : (
-                      <div className="w-full rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-700">
-                        Không có bàn trống cho {person} người vào thời điểm này.
-                      </div>
-                    )
-                  ) : (
-                    <div className="w-full rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm text-slate-500">
-                      Vui lòng chọn ngày, giờ và số người trước
-                    </div>
-                  )}
                 </div>
               </div>
             </div>

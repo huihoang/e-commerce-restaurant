@@ -1,7 +1,13 @@
 import { useEffect, useState } from "react";
+import PropTypes from "prop-types";
 import axios from "axios";
 import { useNotification } from "@/contexts/NotificationContext";
 import DiscountCodeSection from "@/components/User/EditBookingModal/DiscountCodeSection";
+import BookingModalHeader from "@/components/Admin/AdminEditBookingModal/BookingModalHeader";
+import BookingInfoForm from "@/components/Admin/AdminEditBookingModal/BookingInfoForm";
+import SelectedDishesSection from "@/components/Admin/AdminEditBookingModal/SelectedDishesSection";
+import MenuGridSection from "@/components/Admin/AdminEditBookingModal/MenuGridSection";
+import ModalActionsSection from "@/components/Admin/AdminEditBookingModal/ModalActionsSection";
 
 const AdminEditBookingModal = ({ booking, onClose, onSave }) => {
   const { showSuccess, showError } = useNotification();
@@ -149,182 +155,20 @@ const AdminEditBookingModal = ({ booking, onClose, onSave }) => {
   const totals = calculateTotals();
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm p-0">
-      <div className="w-full max-w-4xl max-h-[90vh] flex flex-col rounded-3xl bg-white shadow-2xl">
-        {/* Header */}
-        <div className="flex items-center justify-between border-b border-slate-200 bg-gradient-to-r from-blue-500 to-indigo-600 px-6 py-4 rounded-t-3xl">
-          <h3 className="text-2xl font-bold text-white">✏️ Chỉnh sửa Đặt Bàn</h3>
-          <button
-            onClick={onClose}
-            className="rounded-full bg-white/20 p-2 text-white transition hover:bg-white/30"
-            aria-label="Đóng"
-          >
-            ✕
-          </button>
-        </div>
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-0 backdrop-blur-sm">
+      <div className="flex max-h-[90vh] w-full max-w-4xl flex-col rounded-3xl bg-white shadow-2xl">
+        <BookingModalHeader onClose={onClose} />
 
-        <div className="p-6 overflow-y-auto flex-1 [&::-webkit-scrollbar]:w-2 [&::-webkit-scrollbar-track]:bg-transparent [&::-webkit-scrollbar-thumb]:bg-slate-300 [&::-webkit-scrollbar-thumb]:rounded-full [&::-webkit-scrollbar-thumb]:hover:bg-slate-400">
-          {/* Basic Info Section */}
-          <div className="mb-6 grid gap-4 md:grid-cols-2">
-            <div>
-              <label className="mb-2 block text-sm font-semibold text-slate-700">
-                📅 Ngày
-              </label>
-              <input
-                type="date"
-                name="date"
-                value={
-                  updatedBooking.date
-                    ? new Date(updatedBooking.date).toISOString().split("T")[0]
-                    : ""
-                }
-                onChange={handleChange}
-                className="w-full rounded-xl border border-slate-200 bg-white px-4 py-3 text-sm shadow-inner transition focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-200"
-              />
-            </div>
+        <div className="flex-1 overflow-y-auto p-6 [&::-webkit-scrollbar]:w-2 [&::-webkit-scrollbar-track]:bg-transparent [&::-webkit-scrollbar-thumb]:rounded-full [&::-webkit-scrollbar-thumb]:bg-slate-300 [&::-webkit-scrollbar-thumb]:hover:bg-slate-400">
+          <BookingInfoForm booking={updatedBooking} onChange={handleChange} />
 
-            <div>
-              <label className="mb-2 block text-sm font-semibold text-slate-700">
-                ⏰ Thời gian
-              </label>
-              <input
-                type="time"
-                name="time"
-                value={updatedBooking.time}
-                onChange={handleChange}
-                className="w-full rounded-xl border border-slate-200 bg-white px-4 py-3 text-sm shadow-inner transition focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-200"
-              />
-            </div>
-
-            <div>
-              <label className="mb-2 block text-sm font-semibold text-slate-700">
-                👥 Số người
-              </label>
-              <input
-                type="number"
-                name="people"
-                min="1"
-                value={updatedBooking.people}
-                onChange={handleChange}
-                className="w-full rounded-xl border border-slate-200 bg-white px-4 py-3 text-sm shadow-inner transition focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-200"
-              />
-            </div>
-
-            <div>
-              <label className="mb-2 block text-sm font-semibold text-slate-700">
-                📝 Ghi chú
-              </label>
-              <textarea
-                name="note"
-                value={updatedBooking.note || ""}
-                onChange={handleChange}
-                rows={3}
-                className="w-full rounded-xl border border-slate-200 bg-white px-4 py-3 text-sm shadow-inner transition focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-200"
-                placeholder="Nhập ghi chú (nếu có)..."
-              />
-            </div>
-          </div>
-
-          {/* Selected Dishes Section */}
-          <div className="mb-6 rounded-2xl border border-slate-200 bg-slate-50 p-4">
-            <h4 className="mb-4 text-lg font-bold text-slate-900">
-              🍽️ Món ăn đã chọn ({updatedBooking.selectedDishes.length})
-            </h4>
-            {updatedBooking.selectedDishes.length === 0 ? (
-              <p className="text-center text-sm text-slate-500">
-                Chưa có món nào được chọn
-              </p>
-            ) : (
-              <div className="space-y-3">
-                {updatedBooking.selectedDishes.map((dishObj) => {
-                  const dishId = dishObj.dishId._id || dishObj.dishId;
-                  const dish = dishObj.dishId;
-                  return (
-                    <div
-                      key={dishId}
-                      className="flex items-center justify-between rounded-xl bg-white p-3 shadow-sm"
-                    >
-                      <div className="flex items-center gap-3">
-                        <img
-                          src={dish.image || "https://via.placeholder.com/60"}
-                          alt={dish.name}
-                          className="h-14 w-14 rounded-full object-cover"
-                        />
-                        <div>
-                          <p className="font-semibold text-slate-900">
-                            {dish.name}
-                          </p>
-                          <p className="text-sm text-slate-600">
-                            {dish.price?.toLocaleString("vi-VN")} đ
-                          </p>
-                        </div>
-                      </div>
-                      <div className="flex items-center gap-3">
-                        <div className="flex items-center gap-2">
-                          <button
-                            type="button"
-                            onClick={() =>
-                              handleQuantityChange(
-                                dishId,
-                                Math.max(1, dishObj.quantity - 1)
-                              )
-                            }
-                            className="h-8 w-8 rounded-lg bg-slate-100 text-slate-700 transition hover:bg-slate-200"
-                          >
-                            −
-                          </button>
-                          <input
-                            type="number"
-                            min="1"
-                            value={dishObj.quantity}
-                            onChange={(e) =>
-                              handleQuantityChange(dishId, e.target.value)
-                            }
-                            className="h-8 w-16 rounded-lg border border-slate-200 text-center text-sm font-semibold"
-                          />
-                          <button
-                            type="button"
-                            onClick={() =>
-                              handleQuantityChange(
-                                dishId,
-                                dishObj.quantity + 1
-                              )
-                            }
-                            className="h-8 w-8 rounded-lg bg-slate-100 text-slate-700 transition hover:bg-slate-200"
-                          >
-                            +
-                          </button>
-                        </div>
-                        <button
-                          type="button"
-                          onClick={() => handleRemoveDish(dishId)}
-                          className="rounded-lg bg-red-100 px-3 py-1.5 text-sm font-semibold text-red-600 transition hover:bg-red-200"
-                        >
-                          🗑️ Xóa
-                        </button>
-                      </div>
-                    </div>
-                  );
-                })}
-              </div>
-            )}
-            <div className="mt-4 space-y-2 rounded-xl bg-gradient-to-r from-green-50 to-emerald-50 px-4 py-3">
-              <div className="flex items-center justify-between text-sm font-semibold text-slate-700">
-                <span>🧾 Tạm tính:</span>
-                <span>{totals.subtotal.toLocaleString("vi-VN")} đ</span>
-              </div>
-              {updatedBooking.discount > 0 && (
-                <div className="flex items-center justify-between text-sm font-semibold text-amber-600">
-                  <span>🎁 Giảm giá ({updatedBooking.discount}%):</span>
-                  <span>-{totals.discountAmount.toLocaleString("vi-VN")} đ</span>
-                </div>
-              )}
-              <div className="flex items-center justify-between text-lg font-bold text-green-700">
-                <span>💰 Tổng tiền:</span>
-                <span>{totals.total.toLocaleString("vi-VN")} đ</span>
-              </div>
-            </div>
-          </div>
+          <SelectedDishesSection
+            selectedDishes={updatedBooking.selectedDishes}
+            discountPercent={updatedBooking.discount}
+            totals={totals}
+            onQuantityChange={handleQuantityChange}
+            onRemoveDish={handleRemoveDish}
+          />
 
           <DiscountCodeSection
             booking={updatedBooking}
@@ -332,78 +176,15 @@ const AdminEditBookingModal = ({ booking, onClose, onSave }) => {
             onRemoveDiscount={handleRemoveDiscount}
           />
 
-          {/* Menu List Section */}
-          <div className="rounded-2xl border border-slate-200 bg-slate-50 p-4">
-            <div className="mb-4 flex items-center justify-between">
-              <h4 className="text-lg font-bold text-slate-900">
-                🧾 Danh sách món ăn
-              </h4>
-              <input
-                type="text"
-                placeholder="🔍 Tìm món..."
-                value={searchMenu}
-                onChange={(e) => setSearchMenu(e.target.value)}
-                className="w-48 rounded-xl border border-slate-200 bg-white px-4 py-2 text-sm shadow-inner transition focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-200"
-              />
-            </div>
-            <div className="max-h-[300px] overflow-y-auto">
-              <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 md:grid-cols-4">
-                {filteredMenu.map((dish) => {
-                  const isAdded = updatedBooking.selectedDishes.some(
-                    (d) => (d.dishId._id || d.dishId) === dish._id
-                  );
-                  return (
-                    <button
-                      key={dish._id}
-                      type="button"
-                      onClick={() => !isAdded && handleAddDish(dish)}
-                      disabled={isAdded}
-                      className={`flex flex-col items-center rounded-xl border-2 p-3 transition ${
-                        isAdded
-                          ? "border-green-300 bg-green-50 opacity-60"
-                          : "border-slate-200 bg-white hover:border-blue-300 hover:shadow-md"
-                      }`}
-                    >
-                      <img
-                        src={dish.image || "https://via.placeholder.com/80"}
-                        alt={dish.name}
-                        className="mb-2 h-16 w-16 rounded-full object-cover"
-                      />
-                      <p className="text-xs font-semibold text-slate-900">
-                        {dish.name}
-                      </p>
-                      <p className="mt-1 text-xs text-slate-600">
-                        {dish.price?.toLocaleString("vi-VN")} đ
-                      </p>
-                      {isAdded && (
-                        <span className="mt-1 text-xs font-semibold text-green-600">
-                          ✓ Đã thêm
-                        </span>
-                      )}
-                    </button>
-                  );
-                })}
-              </div>
-            </div>
-          </div>
+          <MenuGridSection
+            menu={filteredMenu}
+            searchValue={searchMenu}
+            onSearchChange={setSearchMenu}
+            selectedDishes={updatedBooking.selectedDishes}
+            onAddDish={handleAddDish}
+          />
 
-          {/* Action Buttons */}
-          <div className="mt-6 flex justify-end gap-3">
-            <button
-              type="button"
-              onClick={onClose}
-              className="rounded-xl border border-slate-200 bg-white px-6 py-3 text-sm font-semibold text-slate-700 transition hover:bg-slate-50"
-            >
-              Hủy bỏ
-            </button>
-            <button
-              type="button"
-              onClick={handleSave}
-              className="rounded-xl bg-gradient-to-r from-blue-600 to-indigo-600 px-6 py-3 text-sm font-semibold text-white shadow-lg transition hover:from-blue-700 hover:to-indigo-700 hover:shadow-xl"
-            >
-              💾 Lưu thay đổi
-            </button>
-          </div>
+          <ModalActionsSection onCancel={onClose} onSave={handleSave} />
         </div>
       </div>
     </div>
@@ -411,3 +192,9 @@ const AdminEditBookingModal = ({ booking, onClose, onSave }) => {
 };
 
 export default AdminEditBookingModal;
+
+AdminEditBookingModal.propTypes = {
+  booking: PropTypes.object.isRequired,
+  onClose: PropTypes.func.isRequired,
+  onSave: PropTypes.func.isRequired,
+};
