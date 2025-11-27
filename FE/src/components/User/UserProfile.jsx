@@ -1,6 +1,10 @@
 import { useEffect, useState, useCallback } from "react";
 import axios from "axios";
 import { useNotification } from "@/contexts/NotificationContext";
+import ProfileHero from "@/components/User/UserProfile/ProfileHero";
+import ProfileFormLeft from "@/components/User/UserProfile/ProfileFormLeft";
+import ProfileFormRight from "@/components/User/UserProfile/ProfileFormRight";
+import ProfileActions from "@/components/User/UserProfile/ProfileActions";
 
 const UserProfile = () => {
   const { showSuccess, showError } = useNotification();
@@ -132,37 +136,7 @@ const UserProfile = () => {
 
   return (
     <div>
-      {/* ==================== Hero Card ==================== */}
-      <div className="mb-6 rounded-3xl bg-gradient-to-br from-emerald-500 via-green-500 to-teal-500 p-6 text-white shadow-xl">
-        <div className="flex flex-col md:flex-row items-center md:items-start gap-6">
-          {/* Avatar */}
-          <div className="flex-shrink-0">
-            <div className="h-24 w-24 rounded-full bg-white/20 backdrop-blur-sm flex items-center justify-center text-4xl font-bold border-4 border-white/30">
-              {user.fullName?.charAt(0).toUpperCase() ||
-                user.username?.charAt(0).toUpperCase() ||
-                "U"}
-            </div>
-          </div>
-
-          {/* User Info */}
-          <div className="flex-1 text-center md:text-left">
-            <h2 className="text-3xl font-bold mb-2">
-              {user.fullName || user.username}
-            </h2>
-            <p className="text-emerald-100 mb-4">{user.email}</p>
-            <div className="flex flex-wrap gap-2 justify-center md:justify-start">
-              <span className="px-4 py-1 rounded-full bg-white/20 backdrop-blur-sm text-sm font-semibold">
-                👤 {roleLabel}
-              </span>
-              {user.createdAt && (
-                <span className="px-4 py-1 rounded-full bg-white/20 backdrop-blur-sm text-sm font-semibold">
-                  📅 Tham gia: {new Date(user.createdAt).toLocaleDateString("vi-VN")}
-                </span>
-              )}
-            </div>
-          </div>
-        </div>
-      </div>
+      <ProfileHero user={user} roleLabel={roleLabel} />
 
       {/* ==================== Profile Form ==================== */}
       <div className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
@@ -179,183 +153,28 @@ const UserProfile = () => {
         </div>
 
         <div className="grid gap-6 md:grid-cols-2">
-          {/* Left Column */}
-          <div className="space-y-6">
-            {/* Username Field */}
-            <div>
-              <label
-                htmlFor="username"
-                className="mb-2 block text-sm font-semibold text-slate-700"
-              >
-                👤 Tên đăng nhập
-              </label>
-              {isEditing ? (
-                <input
-                  id="username"
-                  type="text"
-                  name="username"
-                  value={formData.username}
-                  onChange={handleChange}
-                  className="w-full rounded-xl border border-slate-200 bg-white px-4 py-3 text-sm shadow-inner transition focus:border-green-500 focus:outline-none focus:ring-2 focus:ring-green-200"
-                  placeholder="Nhập tên đăng nhập"
-                />
-              ) : (
-                <div className="rounded-xl border border-slate-200 bg-slate-50 px-4 py-3">
-                  <p className="text-slate-900 font-medium">{user.username}</p>
-                </div>
-              )}
-            </div>
+          <ProfileFormLeft
+            formData={formData}
+            user={user}
+            isEditing={isEditing}
+            onChange={handleChange}
+          />
 
-            {/* Full Name Field */}
-            <div>
-              <label
-                htmlFor="fullName"
-                className="mb-2 block text-sm font-semibold text-slate-700"
-              >
-                🆔 Tên nhân viên
-              </label>
-              {isEditing ? (
-                <input
-                  id="fullName"
-                  type="text"
-                  name="fullName"
-                  value={formData.fullName}
-                  onChange={handleChange}
-                  className="w-full rounded-xl border border-slate-200 bg-white px-4 py-3 text-sm shadow-inner transition focus:border-green-500 focus:outline-none focus:ring-2 focus:ring-green-200"
-                  placeholder="Nhập tên nhân viên"
-                />
-              ) : (
-                <div className="rounded-xl border border-slate-200 bg-slate-50 px-4 py-3">
-                  <p className="text-slate-900 font-medium">
-                    {user.fullName || "Chưa cập nhật"}
-                  </p>
-                </div>
-              )}
-            </div>
-
-            {/* Email Field */}
-            <div>
-              <label
-                htmlFor="email"
-                className="mb-2 block text-sm font-semibold text-slate-700"
-              >
-                📧 Email
-              </label>
-              {isEditing ? (
-                <input
-                  id="email"
-                  type="email"
-                  name="email"
-                  value={formData.email}
-                  onChange={handleChange}
-                  className="w-full rounded-xl border border-slate-200 bg-white px-4 py-3 text-sm shadow-inner transition focus:border-green-500 focus:outline-none focus:ring-2 focus:ring-green-200"
-                  placeholder="Nhập email"
-                />
-              ) : (
-                <div className="rounded-xl border border-slate-200 bg-slate-50 px-4 py-3">
-                  <p className="text-slate-900 font-medium">{user.email}</p>
-                </div>
-              )}
-            </div>
-          </div>
-
-          {/* Right Column */}
-          <div className="space-y-6">
-            {/* Birthday Field */}
-            <div>
-              <label
-                htmlFor="birthday"
-                className="mb-2 block text-sm font-semibold text-slate-700"
-              >
-                🎂 Ngày sinh nhật
-              </label>
-              {isEditing ? (
-                <input
-                  id="birthday"
-                  type="date"
-                  name="birthday"
-                  value={formData.birthday}
-                  onChange={handleChange}
-                  className="w-full rounded-xl border border-slate-200 bg-white px-4 py-3 text-sm shadow-inner transition focus:border-green-500 focus:outline-none focus:ring-2 focus:ring-green-200 cursor-pointer"
-                  onClick={(e) => e.target.showPicker?.()}
-                  onFocus={(e) => e.target.showPicker?.()}
-                />
-              ) : (
-                <div className="rounded-xl border border-slate-200 bg-slate-50 px-4 py-3">
-                  <p className="text-slate-900 font-medium">
-                    {user.birthday
-                      ? new Date(user.birthday).toLocaleDateString("vi-VN")
-                      : "Chưa cập nhật"}
-                  </p>
-                </div>
-              )}
-            </div>
-
-            {/* Phone Field */}
-            <div>
-              <label
-                htmlFor="phone"
-                className="mb-2 block text-sm font-semibold text-slate-700"
-              >
-                📞 Số điện thoại
-              </label>
-              {isEditing ? (
-                <input
-                  id="phone"
-                  type="tel"
-                  name="phone"
-                  value={formData.phone}
-                  onChange={handleChange}
-                  className="w-full rounded-xl border border-slate-200 bg-white px-4 py-3 text-sm shadow-inner transition focus:border-green-500 focus:outline-none focus:ring-2 focus:ring-green-200"
-                  placeholder="Nhập số điện thoại"
-                />
-              ) : (
-                <div className="rounded-xl border border-slate-200 bg-slate-50 px-4 py-3">
-                  <p className="text-slate-900 font-medium">
-                    {user.phone || "Chưa cập nhật"}
-                  </p>
-                </div>
-              )}
-            </div>
-
-            {/* Role Field (Read-only) */}
-            <div>
-              <p className="mb-2 block text-sm font-semibold text-slate-700">
-                🎭 Vai trò
-              </p>
-              <div className="rounded-xl border border-slate-200 bg-slate-50 px-4 py-3">
-                <p className="text-slate-900 font-medium">{roleLabel}</p>
-              </div>
-            </div>
-          </div>
+          <ProfileFormRight
+            formData={formData}
+            user={user}
+            roleLabel={roleLabel}
+            isEditing={isEditing}
+            onChange={handleChange}
+          />
         </div>
 
-        {/* Action Buttons */}
-        {isEditing && (
-          <div className="mt-6 flex flex-col sm:flex-row gap-3 pt-6 border-t border-slate-200">
-            <button
-              onClick={handleUpdate}
-              disabled={saving}
-              className="flex-1 rounded-xl bg-gradient-to-r from-green-600 to-emerald-600 px-6 py-3 text-sm font-semibold text-white shadow-lg transition hover:from-green-700 hover:to-emerald-700 hover:shadow-xl disabled:opacity-50 disabled:cursor-not-allowed"
-            >
-              {saving ? (
-                <span className="flex items-center justify-center gap-2">
-                  <span className="inline-block h-4 w-4 animate-spin rounded-full border-b-2 border-white" />
-                  Đang lưu...
-                </span>
-              ) : (
-                "💾 Lưu thay đổi"
-              )}
-            </button>
-            <button
-              onClick={handleCancel}
-              disabled={saving}
-              className="flex-1 rounded-xl border border-slate-200 bg-white px-6 py-3 text-sm font-semibold text-slate-700 transition hover:bg-slate-50 disabled:opacity-50 disabled:cursor-not-allowed"
-            >
-              ❌ Hủy bỏ
-            </button>
-          </div>
-        )}
+        <ProfileActions
+          isEditing={isEditing}
+          saving={saving}
+          onSave={handleUpdate}
+          onCancel={handleCancel}
+        />
       </div>
     </div>
   );

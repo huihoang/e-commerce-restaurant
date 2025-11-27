@@ -1,6 +1,11 @@
 import PropTypes from "prop-types";
 import axios from "axios";
 import { useNotification } from "@/contexts/NotificationContext";
+import PaymentHeader from "@/components/User/PaymentModal/PaymentHeader";
+import BookingInfoSection from "@/components/User/PaymentModal/BookingInfoSection";
+import ItemsTable from "@/components/User/PaymentModal/ItemsTable";
+import TotalsSection from "@/components/User/PaymentModal/TotalsSection";
+import PaymentActions from "@/components/User/PaymentModal/PaymentActions";
 
 const PaymentModal = ({ booking, onClose, onPaymentSuccess }) => {
   const { showSuccess, showError } = useNotification();
@@ -74,189 +79,19 @@ const PaymentModal = ({ booking, onClose, onPaymentSuccess }) => {
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm p-0">
       <div className="w-full max-w-2xl max-h-[90vh] flex flex-col rounded-3xl bg-white shadow-2xl">
-        {/* Header */}
-        <div className="flex items-center justify-between border-b border-slate-200 bg-gradient-to-r from-green-500 to-emerald-600 px-6 py-4 rounded-t-3xl">
-          <h2 className="text-2xl font-bold text-white">💳 Thanh toán</h2>
-          <button
-            onClick={onClose}
-            className="rounded-full bg-white/20 p-2 text-white transition hover:bg-white/30"
-            aria-label="Đóng"
-          >
-            ✕
-          </button>
-        </div>
+        <PaymentHeader onClose={onClose} />
 
         <div className="p-6 overflow-y-auto flex-1 [&::-webkit-scrollbar]:w-2 [&::-webkit-scrollbar-track]:bg-transparent [&::-webkit-scrollbar-thumb]:bg-slate-300 [&::-webkit-scrollbar-thumb]:rounded-full [&::-webkit-scrollbar-thumb]:hover:bg-slate-400">
-          {/* Booking Info */}
-          <div className="mb-6 rounded-xl bg-slate-50 p-4">
-            <div className="grid gap-2 text-sm">
-              <p className="font-semibold text-slate-900">
-                👤 Khách hàng: {booking.name || "N/A"}
-              </p>
-              <p className="text-slate-600">
-                📅 {new Date(booking.date).toLocaleDateString("vi-VN")} - ⏰{" "}
-                {booking.time}
-              </p>
-              <p className="text-slate-600">👥 {booking.people} người</p>
-            </div>
-          </div>
+          <BookingInfoSection booking={booking} />
 
-          {/* Items Table */}
-          <div className="mb-6 overflow-x-auto rounded-xl border border-slate-200">
-            <table className="min-w-[520px] w-full text-sm">
-              <thead className="bg-gradient-to-r from-slate-50 to-slate-100">
-                <tr>
-                  <th className="p-4 text-left font-semibold text-slate-700">
-                    Món ăn
-                  </th>
-                  <th className="p-4 text-center font-semibold text-slate-700">
-                    Số lượng
-                  </th>
-                  <th className="p-4 text-right font-semibold text-slate-700">
-                    Đơn giá
-                  </th>
-                  <th className="p-4 text-right font-semibold text-slate-700">
-                    Thành tiền
-                  </th>
-                </tr>
-              </thead>
-              <tbody>
-                {booking.selectedDishes.map((dishItem, index) => (
-                  <tr
-                    key={`${dishItem.dishId?._id || dishItem.dishId || index}`}
-                    className="border-t border-slate-100 transition hover:bg-slate-50"
-                  >
-                    <td className="p-4">
-                      <div className="flex items-center gap-3">
-                        <img
-                          src={
-                            dishItem.dishId?.image ||
-                            "https://via.placeholder.com/50"
-                          }
-                          alt={dishItem.dishId?.name || "Món ăn"}
-                          className="h-10 w-10 rounded-full object-cover"
-                        />
-                        <span className="font-medium text-slate-900">
-                          {dishItem.dishId?.name || "Tên món"}
-                        </span>
-                      </div>
-                    </td>
-                    <td className="p-4 text-center">
-                      <span className="rounded-full bg-slate-100 px-3 py-1 font-semibold text-slate-700">
-                        {dishItem.quantity}
-                      </span>
-                    </td>
-                    <td className="p-4 text-right text-slate-700">
-                      {(() => {
-                        const discountPercent = Number(dishItem.dishId?.discountPercent) || 0;
-                        const price = Number(dishItem.dishId?.price) || 0;
-                        const discountedPrice = price * (1 - discountPercent / 100);
-                        return discountPercent > 0 ? (
-                          <div>
-                            <p className="text-xs text-slate-400 line-through">
-                              {price.toLocaleString("vi-VN")} đ
-                            </p>
-                            <p className="text-red-600 font-semibold">
-                              {discountedPrice.toLocaleString("vi-VN")} đ
-                            </p>
-                          </div>
-                        ) : (
-                          <span>{price.toLocaleString("vi-VN")} đ</span>
-                        );
-                      })()}
-                    </td>
-                    <td className="p-4 text-right">
-                      <span className="font-bold text-emerald-600">
-                        {calculateLineTotal(
-                          dishItem.dishId?.price,
-                          dishItem.quantity,
-                          dishItem.dishId?.discountPercent || 0
-                        ).toLocaleString("vi-VN")}{" "}
-                        đ
-                      </span>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
+          <ItemsTable
+            booking={booking}
+            calculateLineTotal={calculateLineTotal}
+          />
 
-          {/* Total Amount */}
-          <div className="mb-6 space-y-2 rounded-xl bg-gradient-to-r from-green-50 to-emerald-50 px-6 py-4">
-            {amounts.itemDiscountAmount > 0 && (
-              <div className="flex items-center justify-between">
-                <span className="text-sm font-semibold text-slate-600">
-                  Tổng giá gốc
-                </span>
-                <span className="text-base font-bold text-slate-900">
-                  {amounts.originalSubtotal.toLocaleString("vi-VN")} đ
-                </span>
-              </div>
-            )}
-            {amounts.itemDiscountAmount > 0 && (
-              <div className="flex items-center justify-between">
-                <span className="text-sm font-semibold text-orange-600">
-                  🔥 Giảm giá trên món
-                </span>
-                <span className="text-base font-bold text-orange-600">
-                  -{amounts.itemDiscountAmount.toLocaleString("vi-VN")} đ
-                </span>
-              </div>
-            )}
-            <div className="flex items-center justify-between">
-              <span className="text-sm font-semibold text-slate-600">
-                Tạm tính
-              </span>
-              <span className="text-base font-bold text-slate-900">
-                {amounts.subtotal.toLocaleString("vi-VN")} đ
-              </span>
-            </div>
-            {booking.discount > 0 && (
-              <div className="flex items-center justify-between">
-                <span className="text-sm font-semibold text-blue-600">
-                  🎫 Giảm giá mã ({booking.discountCode || 'Mã giảm giá'}): ({booking.discount}%)
-                </span>
-                <span className="text-base font-bold text-blue-600">
-                  -{amounts.discountCodeAmount.toLocaleString("vi-VN")} đ
-                </span>
-              </div>
-            )}
-            <div className="flex items-center justify-between border-t border-slate-200 pt-2">
-              <span className="text-lg font-bold text-slate-700">
-                💰 Tổng cộng:
-              </span>
-              <div className="text-right">
-                {(amounts.itemDiscountAmount > 0 || amounts.discountCodeAmount > 0) && (
-                  <p className="text-sm text-slate-400 line-through">
-                    {amounts.itemDiscountAmount > 0 
-                      ? amounts.originalSubtotal.toLocaleString("vi-VN") 
-                      : amounts.subtotal.toLocaleString("vi-VN")} đ
-                  </p>
-                )}
-                <span className="text-2xl font-bold text-green-700">
-                  {amounts.total.toLocaleString("vi-VN")} đ
-                </span>
-              </div>
-            </div>
-          </div>
+          <TotalsSection booking={booking} amounts={amounts} />
 
-          {/* Action Buttons */}
-          <div className="flex justify-end gap-3">
-            <button
-              type="button"
-              onClick={onClose}
-              className="rounded-xl border border-slate-200 bg-white px-6 py-3 text-sm font-semibold text-slate-700 transition hover:bg-slate-50"
-            >
-              Hủy
-            </button>
-            <button
-              type="button"
-              onClick={handlePayment}
-              className="rounded-xl bg-gradient-to-r from-green-600 to-emerald-600 px-6 py-3 text-sm font-semibold text-white shadow-lg transition hover:from-green-700 hover:to-emerald-700 hover:shadow-xl"
-            >
-              ✅ Xác nhận thanh toán
-            </button>
-          </div>
+          <PaymentActions onClose={onClose} onConfirm={handlePayment} />
         </div>
       </div>
     </div>
