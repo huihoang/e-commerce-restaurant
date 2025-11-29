@@ -4,7 +4,7 @@ import { useNavigate } from "react-router-dom";
 import { useNotification } from "@/contexts/NotificationContext";
 
 const isAdminRole = (role) => role === "admin" || role === "staff";
-const getHomePathByRole = (role) => (isAdminRole(role) ? "/admin" : "/user");
+const getHomePathByRole = (role) => (isAdminRole(role) ? "/admin" : "/");
 
 const Auth = ({ setIsLoggedIn, setRole, isLoggedIn, role }) => {
   const { showSuccess, showError } = useNotification();
@@ -36,6 +36,8 @@ const Auth = ({ setIsLoggedIn, setRole, isLoggedIn, role }) => {
     if (res.ok) {
       localStorage.setItem("token", data.token);
       localStorage.setItem("role", data.role);
+      localStorage.setItem("username", username);
+      globalThis.dispatchEvent(new Event("auth-change"));
       setIsLoggedIn(true);
       setRole(data.role);
       setForm("logout");
@@ -67,6 +69,8 @@ const Auth = ({ setIsLoggedIn, setRole, isLoggedIn, role }) => {
   const handleLogout = () => {
     localStorage.removeItem("token");
     localStorage.removeItem("role");
+    localStorage.removeItem("username");
+    globalThis.dispatchEvent(new Event("auth-change"));
     setIsLoggedIn(false);
     setRole("");
     setForm("login");

@@ -281,7 +281,8 @@ const BookingHistory = () => {
   };
 
   return (
-    <div>
+    <section className="bg-slate-100">
+      <div className="mx-auto max-w-6xl px-4 py-10">
       <HeroStatsCard stats={stats} onRefresh={fetchBookings} />
 
       <BookingTabs activeTab={activeTab} onTabChange={setActiveTab} />
@@ -352,7 +353,8 @@ const BookingHistory = () => {
         onConfirm={confirmDelete}
         onCancel={closeDeleteModal}
       />
-    </div>
+      </div>
+    </section>
   );
 };
 

@@ -135,7 +135,8 @@ const UserProfile = () => {
   const roleLabel = roleLabelMap[role] || "Khách";
 
   return (
-    <div>
+    <section className="bg-slate-100">
+      <div className="mx-auto max-w-5xl px-4 py-10">
       <ProfileHero user={user} roleLabel={roleLabel} />
 
       {/* ==================== Profile Form ==================== */}
@@ -176,7 +177,8 @@ const UserProfile = () => {
           onCancel={handleCancel}
         />
       </div>
-    </div>
+      </div>
+    </section>
   );
 };
 

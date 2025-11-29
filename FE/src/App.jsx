@@ -1,6 +1,6 @@
 // ==================== All Import
 import PropTypes from "prop-types";
-import { useState, useMemo, useCallback } from "react";
+import { useState, useMemo, useCallback, useEffect } from "react";
 import {
   createBrowserRouter,
   createRoutesFromElements,
@@ -25,10 +25,10 @@ import AdminDiscountManager from "./components/Admin/AdminDiscountManager";
 import AdminTableManager from "./components/Admin/AdminTableManager";
 import AdminBookingList from "./components/Admin/AdminBookingList";
 import AdminContactList from "./components/Admin/AdminContactList";
-import UserDashboard from "./components/User/UserDashboard";
 import BookUsers from "./components/User/BookUsers";
 import BookingHistory from "./components/User/BookingHistory";
 import UserProfile from "./components/User/UserProfile";
+import UserSettings from "./components/User/UserSettings";
 import BlogDetails from "./components/HomePage/BlogDetails"; // trang chi tiết
 import Cart from "./components/HomePage/Cart";
 import LayoutOne from "./layouts/LayoutOne";
@@ -145,6 +145,39 @@ const getRouter = ({
           <Route path="/blog" element={<Blog />} />
           <Route path="/blog/:id" element={<BlogDetails />} />
           <Route path="/cart" element={<Cart />} />
+          <Route
+            path="/profile"
+            element={
+              <ProtectedRoute
+                isAllowed={isLoggedIn && isUserRole(role)}
+                redirectTo="/login"
+              >
+                <UserProfile />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/history"
+            element={
+              <ProtectedRoute
+                isAllowed={isLoggedIn && isUserRole(role)}
+                redirectTo="/login"
+              >
+                <BookingHistory />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/settings"
+            element={
+              <ProtectedRoute
+                isAllowed={isLoggedIn && isUserRole(role)}
+                redirectTo="/login"
+              >
+                <UserSettings />
+              </ProtectedRoute>
+            }
+          />
         </Route>
 
           <Route
@@ -230,22 +263,6 @@ const getRouter = ({
           <Route path="profile" element={<UserProfile />} />
         </Route>
 
-          <Route
-            path="/user"
-            element={
-              <ProtectedRoute
-                isAllowed={isLoggedIn && isUserRole(role)}
-                redirectTo="/login"
-              >
-                <UserDashboard onLogout={handleLogout} />
-              </ProtectedRoute>
-            }
-          >
-          <Route index element={<Navigate to="book" replace />} />
-          <Route path="book" element={<BookUsers />} />
-          <Route path="history" element={<BookingHistory />} />
-          <Route path="profile" element={<UserProfile />} />
-        </Route>
       </>
     )
   );
@@ -265,9 +282,30 @@ const App = () => {
   const handleLogout = useCallback(() => {
     localStorage.removeItem("token");
     localStorage.removeItem("role");
+    localStorage.removeItem("username");
     setIsLoggedIn(false);
     setRole("");
   }, [setIsLoggedIn, setRole]);
+
+  // Sync auth state when other parts of the app change localStorage
+  useEffect(() => {
+    const syncFromStorage = () => {
+      const token = localStorage.getItem("token");
+      const storedRole = localStorage.getItem("role") || "";
+      setIsLoggedIn(Boolean(token && storedRole));
+      setRole(storedRole);
+    };
+
+    const handleAuthChange = () => syncFromStorage();
+
+    globalThis.addEventListener("auth-change", handleAuthChange);
+    globalThis.addEventListener("storage", handleAuthChange);
+
+    return () => {
+      globalThis.removeEventListener("auth-change", handleAuthChange);
+      globalThis.removeEventListener("storage", handleAuthChange);
+    };
+  }, []);
 
   const router = useMemo(
     () =>

@@ -1,6 +1,6 @@
 // ==================== All Import
-import { useState, useEffect } from 'react'
-import { Link, NavLink } from 'react-router-dom';
+import { useState, useEffect, useCallback, useRef } from 'react'
+import { Link, NavLink, useLocation, useNavigate } from 'react-router-dom';
 import ScrollToTop from './ScrollToTop';
 import { getCartCount, onCartChange } from '@/utils/cart';
 import { LuShoppingCart } from 'react-icons/lu';
@@ -8,11 +8,47 @@ import { LuShoppingCart } from 'react-icons/lu';
 const Navbar = () => {
     const [open, setOpen] = useState(false);
     const [cartCount, setCartCount] = useState(0);
+    const [userMenuOpen, setUserMenuOpen] = useState(false);
+    const [authState, setAuthState] = useState({
+        isLoggedIn: false,
+        role: '',
+        username: '',
+    });
+    const menuRef = useRef(null);
+    const navigate = useNavigate();
+    const location = useLocation();
 
     useEffect(() => {
         const off = onCartChange(() => setCartCount(getCartCount()));
         return () => off && off();
     }, []);
+
+    const syncAuthState = useCallback(() => {
+        const token = localStorage.getItem('token');
+        const role = localStorage.getItem('role') || '';
+        const username = localStorage.getItem('username') || '';
+        setAuthState({
+            isLoggedIn: Boolean(token && role),
+            role,
+            username,
+        });
+    }, []);
+
+    useEffect(() => {
+        syncAuthState();
+    }, [syncAuthState]);
+
+    useEffect(() => {
+        const handleStorage = () => syncAuthState();
+        globalThis.addEventListener('storage', handleStorage);
+        return () => globalThis.removeEventListener('storage', handleStorage);
+    }, [syncAuthState]);
+
+    useEffect(() => {
+        const handleAuthChange = () => syncAuthState();
+        globalThis.addEventListener('auth-change', handleAuthChange);
+        return () => globalThis.removeEventListener('auth-change', handleAuthChange);
+    }, [syncAuthState]);
 
     const closeMenu = () => setOpen(false);
 
@@ -26,6 +62,204 @@ const Navbar = () => {
             };
         }
     }, [open]);
+
+    useEffect(() => {
+        setUserMenuOpen(false);
+        closeMenu();
+    }, [location.pathname]);
+
+    useEffect(() => {
+        if (!userMenuOpen) return undefined;
+        const handleClick = (event) => {
+            if (menuRef.current && !menuRef.current.contains(event.target)) {
+                setUserMenuOpen(false);
+            }
+        };
+        document.addEventListener('mousedown', handleClick);
+        return () => document.removeEventListener('mousedown', handleClick);
+    }, [userMenuOpen]);
+
+    const handleLogout = () => {
+        localStorage.removeItem('token');
+        localStorage.removeItem('role');
+        localStorage.removeItem('username');
+        globalThis.dispatchEvent(new Event('auth-change'));
+        syncAuthState();
+        navigate('/login');
+    };
+
+    const userInitial =
+        authState.username?.trim().charAt(0).toUpperCase() || 'U';
+    const displayUsername = authState.username || 'Tài khoản';
+
+    const renderUserControls = () => {
+        if (!authState.isLoggedIn) {
+            return (
+                <NavLink
+                    to="/login"
+                    className={({ isActive }) =>
+                        `hidden md:inline-flex items-center rounded-full border border-blue-600 px-4 py-1 text-sm font-semibold transition ${
+                            isActive
+                                ? 'bg-gradient-to-r from-blue-600 to-indigo-600 text-white shadow-md'
+                                : 'text-blue-600 hover:bg-blue-50'
+                        }`
+                    }
+                >
+                    Đăng nhập
+                </NavLink>
+            );
+        }
+
+        if (authState.role === 'admin' || authState.role === 'staff') {
+            return (
+                <Link
+                    to="/admin"
+                    className="hidden md:inline-flex items-center rounded-full border border-blue-600 px-4 py-1 text-sm font-semibold text-blue-600 transition hover:bg-blue-50"
+                >
+                    Khu vực quản trị
+                </Link>
+            );
+        }
+
+        return (
+            <div className="relative hidden md:block" ref={menuRef}>
+                <button
+                    className="flex items-center gap-2 rounded-full border border-slate-200 px-3 py-1 text-sm font-semibold text-slate-700 hover:bg-slate-50"
+                    onClick={() => setUserMenuOpen((prev) => !prev)}
+                    type="button"
+                >
+                    <span className="flex h-8 w-8 items-center justify-center rounded-full bg-gradient-to-r from-blue-600 to-indigo-600 text-white">
+                        {userInitial}
+                    </span>
+                    <span className="max-w-[120px] truncate">{displayUsername}</span>
+                    <span className={`text-xs transition-transform ${userMenuOpen ? 'rotate-180' : ''}`}>
+                        ▼
+                    </span>
+                </button>
+                {userMenuOpen && (
+                    <div className="absolute right-0 mt-2 w-56 rounded-2xl border border-slate-100 bg-white p-2 shadow-xl">
+                        <Link
+                            to="/profile"
+                            className="block rounded-xl px-3 py-2 text-sm font-semibold text-slate-700 hover:bg-blue-50"
+                        >
+                            Thông tin người dùng
+                        </Link>
+                        <Link
+                            to="/history"
+                            className="mt-1 block rounded-xl px-3 py-2 text-sm font-semibold text-slate-700 hover:bg-blue-50"
+                        >
+                            Lịch sử đặt món
+                        </Link>
+                        <Link
+                            to="/settings"
+                            className="mt-1 block rounded-xl px-3 py-2 text-sm font-semibold text-slate-700 hover:bg-blue-50"
+                        >
+                            Cài đặt
+                        </Link>
+                        <button
+                            type="button"
+                            onClick={handleLogout}
+                            className="mt-2 block w-full rounded-xl bg-rose-50 px-3 py-2 text-left text-sm font-semibold text-rose-600 hover:bg-rose-100"
+                        >
+                            Đăng xuất
+                        </button>
+                    </div>
+                )}
+            </div>
+        );
+    };
+
+    const renderMobileAuthLinks = () => {
+        if (!authState.isLoggedIn) {
+            return (
+                <NavLink
+                    to="/login"
+                    onClick={closeMenu}
+                    className={({ isActive }) =>
+                        `block py-3 px-4 rounded-lg transition-all duration-300 ${
+                            isActive
+                                ? 'bg-gradient-to-r from-blue-600 to-indigo-600 text-white shadow-md'
+                                : 'hover:bg-blue-50 hover:text-blue-600'
+                        }`
+                    }
+                >
+                    Đăng nhập
+                </NavLink>
+            );
+        }
+
+        if (authState.role === 'admin' || authState.role === 'staff') {
+            return (
+                <NavLink
+                    to="/admin"
+                    onClick={closeMenu}
+                    className={({ isActive }) =>
+                        `block py-3 px-4 rounded-lg transition-all duration-300 ${
+                            isActive
+                                ? 'bg-gradient-to-r from-blue-600 to-indigo-600 text-white shadow-md'
+                                : 'hover:bg-blue-50 hover:text-blue-600'
+                        }`
+                    }
+                >
+                    Khu vực quản trị
+                </NavLink>
+            );
+        }
+
+        return (
+            <>
+                <NavLink
+                    to="/profile"
+                    onClick={closeMenu}
+                    className={({ isActive }) =>
+                        `block py-3 px-4 rounded-lg transition-all duration-300 ${
+                            isActive
+                                ? 'bg-gradient-to-r from-blue-600 to-indigo-600 text-white shadow-md'
+                                : 'hover:bg-blue-50 hover:text-blue-600'
+                        }`
+                    }
+                >
+                    Thông tin người dùng
+                </NavLink>
+                <NavLink
+                    to="/history"
+                    onClick={closeMenu}
+                    className={({ isActive }) =>
+                        `block py-3 px-4 rounded-lg transition-all duration-300 ${
+                            isActive
+                                ? 'bg-gradient-to-r from-blue-600 to-indigo-600 text-white shadow-md'
+                                : 'hover:bg-blue-50 hover:text-blue-600'
+                        }`
+                    }
+                >
+                    Lịch sử đặt món
+                </NavLink>
+                <NavLink
+                    to="/settings"
+                    onClick={closeMenu}
+                    className={({ isActive }) =>
+                        `block py-3 px-4 rounded-lg transition-all duration-300 ${
+                            isActive
+                                ? 'bg-gradient-to-r from-blue-600 to-indigo-600 text-white shadow-md'
+                                : 'hover:bg-blue-50 hover:text-blue-600'
+                        }`
+                    }
+                >
+                    Cài đặt
+                </NavLink>
+                <button
+                    type="button"
+                    onClick={() => {
+                        handleLogout();
+                        closeMenu();
+                    }}
+                    className="block w-full rounded-lg bg-rose-50 px-4 py-3 text-left font-semibold text-rose-600 transition hover:bg-rose-100"
+                >
+                    Đăng xuất
+                </button>
+            </>
+        );
+    };
 
     return (
         <>
@@ -61,10 +295,6 @@ const Navbar = () => {
                                 to="/contact"
                                 className={({ isActive }) => `py-1 px-4 rounded-2xl transition-all duration-300 ${isActive ? 'bg-gradient-to-r from-blue-600 to-indigo-600 text-white shadow-md' : 'hover:bg-blue-50 hover:text-blue-600'}`}
                             >Liên hệ</NavLink>
-                            <NavLink
-                                to="/login"
-                                className={({ isActive }) => `py-1 px-4 rounded-2xl transition-all duration-300 ${isActive ? 'bg-gradient-to-r from-blue-600 to-indigo-600 text-white shadow-md' : 'hover:bg-blue-50 hover:text-blue-600'}`}
-                            >Tài Khoản</NavLink>
                         </ul>
 
                         {/* ---------- CTA & Hamburger ---------- */}
@@ -83,6 +313,7 @@ const Navbar = () => {
                                     Đặt bàn
                                 </button>
                             </Link>
+                            {renderUserControls()}
                             <button
                                 className='md:hidden p-2 rounded-lg border border-slate-700'
                                 aria-label='Mở menu'
@@ -121,7 +352,7 @@ const Navbar = () => {
                         <NavLink to='/about' onClick={closeMenu} className={({isActive}) => `block py-3 px-4 rounded-lg transition-all duration-300 ${isActive ? 'bg-gradient-to-r from-blue-600 to-indigo-600 text-white shadow-md' : 'hover:bg-blue-50 hover:text-blue-600'}`}>Giới thiệu</NavLink>
                         <NavLink to='/menu' onClick={closeMenu} className={({isActive}) => `block py-3 px-4 rounded-lg transition-all duration-300 ${isActive ? 'bg-gradient-to-r from-blue-600 to-indigo-600 text-white shadow-md' : 'hover:bg-blue-50 hover:text-blue-600'}`}>Thực đơn</NavLink>
                         <NavLink to='/contact' onClick={closeMenu} className={({isActive}) => `block py-3 px-4 rounded-lg transition-all duration-300 ${isActive ? 'bg-gradient-to-r from-blue-600 to-indigo-600 text-white shadow-md' : 'hover:bg-blue-50 hover:text-blue-600'}`}>Liên hệ</NavLink>
-                        <NavLink to='/login' onClick={closeMenu} className={({isActive}) => `block py-3 px-4 rounded-lg transition-all duration-300 ${isActive ? 'bg-gradient-to-r from-blue-600 to-indigo-600 text-white shadow-md' : 'hover:bg-blue-50 hover:text-blue-600'}`}>Tài Khoản</NavLink>
+                        {renderMobileAuthLinks()}
                         <NavLink to='/book' onClick={closeMenu} className={({isActive}) => `block py-3 px-4 rounded-lg bg-gradient-to-r from-blue-600 to-indigo-600 text-white text-center transition-all duration-300 ${isActive ? 'from-blue-700 to-indigo-700 shadow-lg' : 'hover:from-blue-700 hover:to-indigo-700 hover:shadow-lg'}`}>Đặt bàn</NavLink>
                     </nav>
                 </div>
