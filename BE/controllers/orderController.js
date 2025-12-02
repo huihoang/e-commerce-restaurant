@@ -29,7 +29,7 @@ function createPaymentUrl(req, res, next) {
     let tmnCode = process.env.vnp_TmnCode;
     let secretKey = process.env.vnp_HashSecret;
     let vnpUrl = process.env.vnp_Url;
-    let returnUrl = process.env.vnp_ReturnUrl;
+    let returnUrl = process.env.VITE_API_BASE_URL + process.env.vnp_ReturnUrl;
     let orderId = moment(date).format('DDHHmmss');
     let amount = req.body.totalAmount;
     let bankCode = req.body.bankCode;

@@ -18,7 +18,6 @@ mongoose
 
 const PORT = process.env.PORT || 5000;
 
-const __dirname = path.resolve();
 app.use(express.static(path.join(__dirname, '/FE/dist')));
 app.get('*', (req, res) => {
   res.sendFile(path.join(__dirname, '/FE/dist/index.html'));
