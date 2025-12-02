@@ -1,8 +1,9 @@
 //orderControlerler.js
-const config = require('config');
 const moment = require('moment');
 const bookingController = require('./bookingController');
 const Booking = require('../models/Booking');
+const dotenv = require('dotenv');
+dotenv.config();
 
 const code_vnp = {
     "00": "Giao dịch thành công",
@@ -25,10 +26,10 @@ function createPaymentUrl(req, res, next) {
         req.headers["x-forwarded-for"]?.toString().split(",")[0].trim() ||
         req.socket.remoteAddress;
 
-    let tmnCode = config.get('vnp_TmnCode');
-    let secretKey = config.get('vnp_HashSecret');
-    let vnpUrl = config.get('vnp_Url');
-    let returnUrl = config.get('vnp_ReturnUrl');
+    let tmnCode = process.env.vnp_TmnCode;
+    let secretKey = process.env.vnp_HashSecret;
+    let vnpUrl = process.env.vnp_Url;
+    let returnUrl = process.env.vnp_ReturnUrl;
     let orderId = moment(date).format('DDHHmmss');
     let amount = req.body.totalAmount;
     let bankCode = req.body.bankCode;
@@ -86,7 +87,7 @@ async function vnpayReturn(req, res, next) {
 
         vnp_Params = sortObject(vnp_Params);
 
-        let secretKey = config.get('vnp_HashSecret');
+        let secretKey = process.env.vnp_HashSecret;
         let querystring = require('qs');
 
         let signData = querystring.stringify(vnp_Params, { encode: false });
@@ -139,7 +140,7 @@ function vnpayIpn(req, res, next) {
     delete vnp_Params['vnp_SecureHashType'];
 
     vnp_Params = sortObject(vnp_Params);
-    let secretKey = config.get('vnp_HashSecret');
+    let secretKey = process.env.vnp_HashSecret; 
     let querystring = require('qs');
     let signData = querystring.stringify(vnp_Params, { encode: false });
     let crypto = require("crypto");

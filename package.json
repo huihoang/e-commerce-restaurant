@@ -4,7 +4,8 @@
   "main": "server.js",
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1",
-    "start": "node server.js"
+    "start": "node BE/server.js",
+    "build": "pnpm install && pnpm --prefix FE install && pnpm --prefix FE run build"
   },
   "keywords": [],
   "author": "",
