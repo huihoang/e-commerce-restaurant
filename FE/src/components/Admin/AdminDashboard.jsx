@@ -7,6 +7,8 @@ import AdminMobileTopBar from "@/components/Admin/AdminDashboard/AdminMobileTopB
 import AdminMobileDrawer from "@/components/Admin/AdminDashboard/AdminMobileDrawer";
 
 const adminMenuOptions = [
+  { label: "Đặt Món", path: "book" },
+  { label: "Lịch Sử Đặt Bàn", path: "bookings" },
   { label: "Quản Lý Người Dùng", path: "users" },
   { label: "Quản Lý Menu", path: "menu" },
   { label: "Quản Lý Danh Mục", path: "categories" },
@@ -14,7 +16,6 @@ const adminMenuOptions = [
   { label: "Quản Lý Giảm Giá", path: "discounts" },
   { label: "Quản Lý Blog", path: "blog" },
   { label: "Quản Lý Liên Hệ", path: "contacts" },
-  { label: "Lịch Sử Đặt Bàn", path: "bookings" },
 ];
 
 const staffMenuOptions = [

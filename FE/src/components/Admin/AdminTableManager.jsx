@@ -29,7 +29,7 @@ const AdminTableManager = () => {
     open: false,
     tableId: null,
   });
-  const ITEMS_PER_PAGE = 8;
+  const ITEMS_PER_PAGE = 9;
 
   const API_BASE_URL =
     import.meta.env.VITE_API_BASE_URL || "http://localhost:5000";

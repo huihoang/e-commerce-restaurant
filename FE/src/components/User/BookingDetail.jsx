@@ -7,6 +7,7 @@ import PriceSummarySection from "./BookingDetail/PriceSummarySection";
 import ModalActions from "./BookingDetail/ModalActions";
 
 const BookingDetail = ({ booking, onClose }) => {
+  const role = localStorage.getItem("role") || "user";
   const calculateTotalAmount = (selectedDishes, discount = 0) => {
     // Tính tổng tiền với giảm giá của từng món
     let originalSubtotal = 0;
@@ -62,7 +63,7 @@ const BookingDetail = ({ booking, onClose }) => {
         <div className="p-6 overflow-y-auto flex-1 [&::-webkit-scrollbar]:w-2 [&::-webkit-scrollbar-track]:bg-transparent [&::-webkit-scrollbar-thumb]:bg-slate-300 [&::-webkit-scrollbar-thumb]:rounded-full [&::-webkit-scrollbar-thumb]:hover:bg-slate-400">
           <CustomerInfoSection booking={booking} />
 
-          <OrderTypeInfoSection booking={booking} />
+          <OrderTypeInfoSection booking={booking} userRole={role} />
 
           <DishesListSection
             selectedDishes={booking.selectedDishes}

@@ -19,8 +19,6 @@ const Menu = () => {
   const API_BASE_URL =
     import.meta.env.VITE_API_BASE_URL || "http://localhost:5000";
 
-  const mockBadges = ["Best Seller", "Chef's Pick", "Ưu đãi", "Món mới"];
-  const getBadge = (index) => mockBadges[index % mockBadges.length];
   const getMockRating = (index) => (4.5 + (index % 5) * 0.1).toFixed(1);
   const getMockOrders = (index) => `${400 + index * 37} lượt đặt`;
 
@@ -153,9 +151,6 @@ const Menu = () => {
               className="w-full sm:w-[306px] pb-4 flex flex-col items-center gap-4 border-2 border-slate-200 rounded-xl hover:border-blue-300 hover:shadow-xl transition-all duration-300 bg-white overflow-hidden relative"
             >
               <div className="absolute top-4 left-4 z-10 flex flex-col gap-2">
-                <span className="px-3 py-1 rounded-full bg-white/90 text-xs font-semibold text-blue-600 shadow">
-                {getBadge(index)}
-                </span>
                 <span
                   className={`px-3 py-1 rounded-full text-xs font-semibold text-white shadow ${getCategoryBadgeClass(
                     getCategoryLabel(item.category)

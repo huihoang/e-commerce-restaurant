@@ -23,7 +23,7 @@ const AdminBookingList = () => {
   const [activeTab, setActiveTab] = useState("dine-in");
   const [searchTerm, setSearchTerm] = useState("");
   const [paymentFilter, setPaymentFilter] = useState("all");
-  const [sortBy, setSortBy] = useState("newest");
+  const [sortBy, setSortBy] = useState("none");
   const [confirmModal, setConfirmModal] = useState({
     open: false,
     bookingId: null,
@@ -37,11 +37,14 @@ const AdminBookingList = () => {
       booking.orderType || (booking.ship?.isShip ? "takeaway" : "dine-in");
     const normalizedTableNumber =
       booking.tableId?.number?.toString() || booking.tableNumber || "";
+    const tableLocation = booking.tableId?.location || booking.tableLocation || "";
     return {
       ...booking,
       orderType: derivedOrderType,
       discount: booking.discount || 0,
       tableNumber: normalizedTableNumber,
+      tableLocation,
+      durationMinutes: booking.durationMinutes || 60,
       deliveryAddress:
         booking.deliveryAddress || booking.ship?.address || booking.note || "",
     };
@@ -54,10 +57,8 @@ const AdminBookingList = () => {
       const res = await axios.get(`${API_BASE_URL}/api/admin/bookings`, {
         headers: { Authorization: `Bearer ${token}` },
       });
-      const sorted = res.data
-        .map(normalizeBooking)
-        .sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
-      setBookings(sorted);
+      const normalized = res.data.map(normalizeBooking);
+      setBookings(normalized);
     } catch (err) {
       console.error("❌ Lỗi khi lấy danh sách đặt bàn:", err.message);
       showError("Lỗi khi tải danh sách đặt bàn!");
@@ -177,15 +178,29 @@ const AdminBookingList = () => {
     handleTogglePaidStatus(booking._id, booking.payment?.isPaid || false);
   };
 
-  const calculateTotalAmount = (selectedDishes, discount = 0) => {
+  const calculateTotalAmount = (booking) => {
+    const selectedDishes = booking.selectedDishes || [];
+    const discount = Number(booking.discount || 0);
+    const storedTotal = Number(booking.totalAmount || 0);
+
     const subtotal = selectedDishes.reduce((total, dishItem) => {
       const price = Number(dishItem.dishId?.price) || 0;
       const quantity = Number(dishItem.quantity) || 0;
       return total + price * quantity;
     }, 0);
+
+    // Nếu chỉ đặt bàn (không chọn món), ưu tiên dùng tổng tiền đã lưu
+    if (selectedDishes.length === 0) {
+      return {
+        subtotal: storedTotal,
+        total: storedTotal,
+      };
+    }
+
+    const total = subtotal - (subtotal * discount) / 100;
     return {
       subtotal,
-      total: subtotal - (subtotal * discount) / 100,
+      total,
     };
   };
 
@@ -217,10 +232,20 @@ const AdminBookingList = () => {
     }
 
     // Sort
-    if (sortBy === "newest") {
-      result.sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
+    const toDateTime = (b) =>
+      new Date(`${b.date || b.createdAt || ""}T${b.time || "00:00"}`);
+
+    if (sortBy === "unpaid-latest") {
+      result.sort((a, b) => {
+        const aPaid = a.payment?.isPaid || false;
+        const bPaid = b.payment?.isPaid || false;
+        if (aPaid !== bPaid) return aPaid ? 1 : -1; // unpaid first
+        return toDateTime(b) - toDateTime(a); // newest time first
+      });
+    } else if (sortBy === "newest") {
+      result.sort((a, b) => toDateTime(b) - toDateTime(a));
     } else if (sortBy === "oldest") {
-      result.sort((a, b) => new Date(a.createdAt) - new Date(b.createdAt));
+      result.sort((a, b) => toDateTime(a) - toDateTime(b));
     } else if (sortBy === "amount-high") {
       result.sort((a, b) => (b.totalAmount || 0) - (a.totalAmount || 0));
     } else if (sortBy === "amount-low") {
@@ -312,7 +337,7 @@ const AdminBookingList = () => {
         onEdit={handleEditBooking}
         onDelete={openDeleteModal}
         onPayment={handlePayment}
-        isAdmin={true}
+        userRole="admin"
       />
 
       {filteredAndSortedBookings.length > 0 && (

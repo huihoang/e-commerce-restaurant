@@ -17,17 +17,14 @@ const ProfileHero = ({ user, roleLabel }) => {
             {user.fullName || user.username}
           </h2>
           <p className="text-emerald-100 mb-4">{user.email}</p>
-          <div className="flex flex-wrap gap-2 justify-center md:justify-start">
-            <span className="px-4 py-1 rounded-full bg-white/20 backdrop-blur-sm text-sm font-semibold">
-              👤 {roleLabel}
-            </span>
-            {user.createdAt && (
+          {user.createdAt && (
+            <div className="flex flex-wrap gap-2 justify-center md:justify-start">
               <span className="px-4 py-1 rounded-full bg-white/20 backdrop-blur-sm text-sm font-semibold">
                 📅 Tham gia:{" "}
                 {new Date(user.createdAt).toLocaleDateString("vi-VN")}
               </span>
-            )}
-          </div>
+            </div>
+          )}
         </div>
       </div>
     </div>

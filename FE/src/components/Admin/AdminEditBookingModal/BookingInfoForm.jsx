@@ -1,6 +1,6 @@
 import PropTypes from "prop-types";
 
-const BookingInfoForm = ({ booking, onChange }) => {
+const BookingInfoForm = ({ booking, onChange, endTime, onEndTimeChange }) => {
   const formattedDate = booking.date
     ? new Date(booking.date).toISOString().split("T")[0]
     : "";
@@ -29,6 +29,19 @@ const BookingInfoForm = ({ booking, onChange }) => {
           name="time"
           value={booking.time}
           onChange={onChange}
+          className="w-full rounded-xl border border-slate-200 bg-white px-4 py-3 text-sm shadow-inner transition focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-200"
+        />
+      </div>
+
+      <div>
+        <label className="mb-2 block text-sm font-semibold text-slate-700">
+          ⏳ Giờ trả bàn
+        </label>
+        <input
+          type="time"
+          name="endTime"
+          value={endTime}
+          onChange={onEndTimeChange}
           className="w-full rounded-xl border border-slate-200 bg-white px-4 py-3 text-sm shadow-inner transition focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-200"
         />
       </div>
@@ -74,5 +87,7 @@ BookingInfoForm.propTypes = {
     note: PropTypes.string,
   }).isRequired,
   onChange: PropTypes.func.isRequired,
+  endTime: PropTypes.string,
+  onEndTimeChange: PropTypes.func.isRequired,
 };
 

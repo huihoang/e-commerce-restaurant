@@ -157,6 +157,7 @@ const UserProfile = () => {
           <ProfileFormLeft
             formData={formData}
             user={user}
+            role={role}
             isEditing={isEditing}
             onChange={handleChange}
           />

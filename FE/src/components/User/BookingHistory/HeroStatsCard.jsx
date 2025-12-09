@@ -24,7 +24,7 @@ const HeroStatsCard = ({ stats, onRefresh, title = "📋 Lịch Sử Đặt Món
           <p className="text-2xl font-bold text-yellow-200">{stats.unpaid}</p>
         </div>
         <div className="rounded-2xl bg-white/20 p-4 backdrop-blur-sm">
-          <p className="text-sm opacity-90">Tổng chi tiêu</p>
+          <p className="text-sm opacity-90">Tổng doanh thu</p>
           <p className="text-2xl font-bold">
             {stats.totalSpent.toLocaleString("vi-VN")} đ
           </p>

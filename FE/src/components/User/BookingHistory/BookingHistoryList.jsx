@@ -12,7 +12,7 @@ const BookingHistoryList = ({
   onEdit,
   onDelete,
   onPayment,
-  isAdmin = false,
+  userRole = "user",
 }) => {
   if (loading) {
     return (
@@ -40,10 +40,7 @@ const BookingHistoryList = ({
   return (
     <div className="space-y-4">
       {bookings.map((booking) => {
-        const amounts = calculateTotalAmount(
-          booking.selectedDishes || [],
-          booking.discount || 0
-        );
+        const amounts = calculateTotalAmount(booking);
 
         return (
           <BookingCard
@@ -55,7 +52,7 @@ const BookingHistoryList = ({
             onEdit={onEdit}
             onDelete={onDelete}
             onPayment={onPayment}
-            isAdmin={isAdmin}
+            userRole={userRole}
           />
         );
       })}

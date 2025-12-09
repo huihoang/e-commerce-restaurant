@@ -8,7 +8,7 @@ const BookingCard = ({
   onEdit,
   onDelete,
   onPayment,
-  isAdmin = false,
+  userRole = "user",
 }) => {
   const orderType = booking.orderType || "dine-in";
   const isPaid = booking.payment?.isPaid || false;
@@ -29,6 +29,22 @@ const BookingCard = ({
   if (tableInfo?.area) {
     tableMeta.push(tableInfo.area);
   }
+  const locationLabel = tableInfo?.location || booking.tableLocation;
+  if (locationLabel) {
+    tableMeta.push(locationLabel);
+  }
+
+  const durationMinutes = Number(booking.durationMinutes || 60);
+  const endTime = (() => {
+    if (!booking.time) return null;
+    const [h, m] = booking.time.split(":").map(Number);
+    if (Number.isNaN(h) || Number.isNaN(m)) return null;
+    const total = h * 60 + m + durationMinutes;
+    const normalized = ((total % (24 * 60)) + (24 * 60)) % (24 * 60);
+    const hh = String(Math.floor(normalized / 60)).padStart(2, "0");
+    const mm = String(normalized % 60).padStart(2, "0");
+    return `${hh}:${mm}`;
+  })();
 
   return (
     <div
@@ -78,6 +94,13 @@ const BookingCard = ({
               </p>
               <p>👥 {booking.people} người</p>
             </div>
+
+            {orderType === "dine-in" && endTime && (userRole === "staff" || userRole === "admin") && (
+              <div className="text-sm text-slate-600">
+                ⏳ Giờ trả bàn: <span className="font-semibold text-slate-900">{endTime}</span>
+                <span className="text-xs text-slate-500"> ({durationMinutes} phút)</span>
+              </div>
+            )}
 
             {/* Dine-in: Table Number */}
             {orderType === "dine-in" && tableLabel && (
@@ -141,14 +164,16 @@ const BookingCard = ({
 
         {/* Action Buttons */}
         <div className="flex flex-col gap-2 w-full md:w-auto">
-          <button
-            type="button"
-            onClick={() => onViewDetail(booking)}
-            className="w-full md:w-auto px-4 py-2 rounded-xl border border-slate-200 text-sm font-semibold text-slate-700 transition hover:bg-slate-50"
-          >
-            👁️ Xem chi tiết
-          </button>
-          {isAdmin ? (
+          {(userRole === "admin" || userRole === "staff" || (userRole === "user" && isPaid)) && (
+            <button
+              type="button"
+              onClick={() => onViewDetail(booking)}
+              className="w-full md:w-auto px-4 py-2 rounded-xl border border-slate-200 text-sm font-semibold text-slate-700 transition hover:bg-slate-50"
+            >
+              👁️ Xem chi tiết
+            </button>
+          )}
+          {userRole === "admin" ? (
             <>
               {!isPaid && (
                 <>
@@ -186,7 +211,7 @@ const BookingCard = ({
                 {isPaid ? "↩️ Đánh dấu chưa thanh toán" : "✅ Đánh dấu đã thanh toán"}
               </button>
             </>
-          ) : (
+          ) : userRole === "staff" ? (
             <>
               {!isPaid && (
                 <>
@@ -207,6 +232,36 @@ const BookingCard = ({
                     className="w-full md:w-auto px-4 py-2 rounded-xl bg-red-500 text-white text-sm font-semibold hover:bg-red-600 transition"
                   >
                     🗑️ Xóa
+                  </button>
+                  <button
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      onPayment(booking);
+                    }}
+                    className="w-full md:w-auto px-4 py-2 rounded-xl bg-gradient-to-r from-green-600 to-emerald-600 text-white text-sm font-semibold hover:from-green-700 hover:to-emerald-700 transition"
+                  >
+                    💳 Thanh toán
+                  </button>
+                </>
+              )}
+              {isPaid && (
+                <div className="w-full md:w-auto px-4 py-2 rounded-xl bg-green-100 text-green-700 text-sm font-semibold text-center">
+                  ✅ Đã thanh toán
+                </div>
+              )}
+            </>
+          ) : (
+            <>
+              {!isPaid && (
+                <>
+                  <button
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      onEdit(booking);
+                    }}
+                    className="w-full md:w-auto px-4 py-2 rounded-xl bg-amber-500 text-white text-sm font-semibold hover:bg-amber-600 transition"
+                  >
+                    ✏️ Chỉnh sửa
                   </button>
                   <button
                     onClick={(e) => {
@@ -257,6 +312,7 @@ BookingCard.propTypes = {
         number: PropTypes.oneOfType([PropTypes.string, PropTypes.number]),
         capacity: PropTypes.number,
         area: PropTypes.string,
+      location: PropTypes.string,
       }),
     note: PropTypes.string,
     selectedDishes: PropTypes.arrayOf(
@@ -280,12 +336,15 @@ BookingCard.propTypes = {
     discountCodeAmount: PropTypes.number,
     total: PropTypes.number,
   }).isRequired,
+  booking: PropTypes.shape({
+    durationMinutes: PropTypes.oneOfType([PropTypes.number, PropTypes.string]),
+  }),
   formatPrice: PropTypes.func.isRequired,
   onViewDetail: PropTypes.func.isRequired,
   onEdit: PropTypes.func.isRequired,
   onDelete: PropTypes.func.isRequired,
   onPayment: PropTypes.func.isRequired,
-  isAdmin: PropTypes.bool,
+  userRole: PropTypes.oneOf(["user", "staff", "admin"]),
 };
 
 export default BookingCard;
