@@ -27,6 +27,7 @@ import AdminBookingList from "./components/Admin/AdminBookingList";
 import AdminContactList from "./components/Admin/AdminContactList";
 import BookUsers from "./components/User/BookUsers";
 import BookingHistory from "./components/User/BookingHistory";
+import PaymentResult from "./components/User/PaymentResult";
 import UserProfile from "./components/User/UserProfile";
 import UserSettings from "./components/User/UserSettings";
 import BlogDetails from "./components/HomePage/BlogDetails"; // trang chi tiết
@@ -178,6 +179,9 @@ const getRouter = ({
               </ProtectedRoute>
             }
           />
+
+          {/* Kết quả thanh toán (user/staff/admin đều xem được, vẫn nằm trong LayoutOne */}
+          <Route path="/payment-result" element={<PaymentResult />} />
         </Route>
 
           <Route

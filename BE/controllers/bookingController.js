@@ -191,11 +191,12 @@ const createBooking = async (req, res) => {
             address: initialShip?.address || deliveryAddress || "",
         };
 
-        const paymentInfo = payment || {
+        const paymentInfo = {
             orderId: moment(normalizedDate || date).format('DDHHmmss'),
             isPaid: false,
             paidAt: null,
             paymentMethod: "cash",
+            ...(payment || {}),
         };
 
         const newBooking = new Booking({
