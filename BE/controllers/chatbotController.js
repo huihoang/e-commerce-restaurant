@@ -6,18 +6,29 @@ const Discount = require('../models/Discount');
 
 const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
 
-// Cache context để tránh query DB liên tục
+// Cache context
 let cachedContext = null;
 let cacheTimestamp = 0;
 const CACHE_DURATION = 60 * 1000;
+
+// Rate limiting counter
+let requestCount = 0;
+let resetTime = Date.now() + 60000; // Reset mỗi phút
+
+const checkRateLimit = () => {
+    const now = Date.now();
+    if (now > resetTime) {
+        requestCount = 0;
+        resetTime = now + 60000;
+    }
+    return requestCount < 10; // Giới hạn 10 requests/phút
+};
 
 const getRestaurantContext = async () => {
     const now = Date.now();
     if (cachedContext && (now - cacheTimestamp) < CACHE_DURATION) return cachedContext;
 
-    const menuUrl = process.env.FRONTEND_URL
-        ? `${process.env.FRONTEND_URL}/menu`
-        : 'http://localhost:5173/menu';
+    const menuUrl = process.env.FRONTEND_URL || 'http://localhost:5173';
 
     const menuItems = await MenuItem.find({}, 'name price discountPercent info category').lean();
     const categories = await Category.find({}, 'name').lean();
@@ -28,44 +39,69 @@ const getRestaurantContext = async () => {
     const menuText = menuItems.slice(0, 30).map(item => {
         const catName = catMap.get(String(item.category)) || 'Khác';
         const discountText = item.discountPercent > 0 ? ` (Giảm ${item.discountPercent}%)` : '';
-        const infoText = item.info ? ` - ${item.info}` : '';
-        return `- ${item.name}: ${item.price}đ${discountText}${infoText} [Danh mục: ${catName}]`;
+        return `- ${item.name}: ${item.price}đ${discountText} [${catName}]`;
     }).join('\n');
 
-    const catText = categories.map(c => `- ${c.name}`).join('\n');
-
     const discountText = discounts.length
-        ? discounts.map(d => `- ${d.code}: Giảm ${d.discountPercent}% (Tối đa ${d.maxDiscount}đ)${d.description ? ` - ${d.description}` : ''}`).join('\n')
-        : '(Hiện chưa có mã giảm giá)';
+        ? discounts.map(d => `- ${d.code}: Giảm ${d.discountPercent}%`).join('\n')
+        : '(Chưa có mã giảm giá)';
 
     cachedContext = `
-[BK RESTAURANT CONTEXT - KHÔNG TRẢ LỜI LẠI PHẦN NÀY]
+Bạn là chatbot nhà hàng BK Restaurant.
 
 QUY TẮC:
-- Chỉ dùng dữ liệu trong CONTEXT để trả lời về món/giá/khuyến mãi.
-- Không bịa món, không bịa giá, không tạo mã giảm giá.
-- Nếu không có dữ liệu: nói "Hiện tại chưa có thông tin đó trên hệ thống" hoặc "Hiện tại không có món này".
+- CHỈ dùng dữ liệu bên dưới
+- KHÔNG bịa giá/món/mã
+- TRẢ LỜI NGẮN (3-5 món)
+- LUÔN kèm link: ${menuUrl}/menu
 
-MENU (hiển thị mẫu 30 món):
-${menuText || '(Chưa có dữ liệu menu)'}
-
-DANH MỤC:
-${catText || '(Chưa có danh mục)'}
+MENU:
+${menuText}
 
 MÃ GIẢM GIÁ:
 ${discountText}
 
-HƯỚNG DẪN TRẢ LỜI:
-- Chỉ gợi ý 3–5 món phù hợp nhất.
-- Luôn kèm link menu để xem thêm: ${menuUrl}
+KẾT THÚC bằng link menu!
 `;
 
     cacheTimestamp = now;
     return cachedContext;
 };
 
+// Rule-based fallback khi hết quota
+const getRuleBasedResponse = async (message) => {
+    const msg = message.toLowerCase();
+    const menuUrl = process.env.FRONTEND_URL || 'http://localhost:5173';
 
+    if (msg.match(/món|menu|ăn gì/)) {
+        const items = await MenuItem.find({ discountPercent: { $gt: 0 } }).limit(5);
+        if (items.length > 0) {
+            return `🍽️ Món đang giảm giá:\n\n${items.map(i =>
+                `• ${i.name} - ${i.price}đ (Giảm ${i.discountPercent}%)`
+            ).join('\n')}\n\n🔗 Xem thêm: ${menuUrl}/menu`;
+        }
+        const allItems = await MenuItem.find().limit(5);
+        return `🍽️ Gợi ý món:\n\n${allItems.map(i =>
+            `• ${i.name} - ${i.price}đ`
+        ).join('\n')}\n\n🔗 Xem thêm: ${menuUrl}/menu`;
+    }
 
+    if (msg.match(/giảm giá|khuyến mãi|voucher/)) {
+        const discounts = await Discount.find().limit(3);
+        if (discounts.length > 0) {
+            return `🎁 Mã giảm giá:\n\n${discounts.map(d =>
+                `• ${d.code}: Giảm ${d.discountPercent}%`
+            ).join('\n')}\n\n🔗 Xem chi tiết: ${menuUrl}/menu`;
+        }
+        return 'Hiện tại chưa có mã giảm giá.';
+    }
+
+    if (msg.match(/đặt bàn|booking/)) {
+        return `📞 Đặt bàn:\n\n1. Vào trang Đặt Bàn\n2. Chọn số người & thời gian\n3. Xác nhận\n\n🔗 ${menuUrl}/book`;
+    }
+
+    return `👋 Xin chào! Tôi có thể giúp:\n\n• Gợi ý món (gõ "món")\n• Mã giảm giá (gõ "khuyến mãi")\n• Đặt bàn (gõ "đặt bàn")\n\n😊`;
+};
 
 exports.chat = async (req, res) => {
     try {
@@ -85,40 +121,52 @@ exports.chat = async (req, res) => {
             });
         }
 
-        const restaurantContext = await getRestaurantContext();
+        let botResponse;
 
-        const recentMessages = chatSession.messages.slice(-10);
+        // Kiểm tra rate limit
+        if (!checkRateLimit()) {
+            console.log('⚠️ Rate limit reached, using rule-based fallback');
+            botResponse = await getRuleBasedResponse(message);
+        } else {
+            try {
+                requestCount++;
 
-        const model = genAI.getGenerativeModel({
-            model: process.env.AI_MODEL || 'gemini-1.5-flash-8b'
-        });
+                const restaurantContext = await getRestaurantContext();
+                const recentMessages = chatSession.messages.slice(-10);
 
-        // Tạo chat với history giới hạn
-        const chat = model.startChat({
-            history: [
-                {
-                    role: 'user',
-                    parts: [{ text: restaurantContext }]
-                },
-                {
-                    role: 'model',
-                    parts: [{ text: 'Tôi đã hiểu. Tôi sẽ chỉ gợi ý 3-5 món và luôn thêm link để khách xem thêm.' }]
-                },
-                ...recentMessages.map(msg => ({
-                    role: msg.role,
-                    parts: [{ text: msg.content }]
-                }))
-            ],
-            generationConfig: {
-                maxOutputTokens: 250,
-                temperature: 0.7,
+                const model = genAI.getGenerativeModel({
+                    model: process.env.AI_MODEL || 'gemini-1.5-flash'
+                });
+
+                const chat = model.startChat({
+                    history: [
+                        {
+                            role: 'user',
+                            parts: [{ text: restaurantContext }]
+                        },
+                        {
+                            role: 'model',
+                            parts: [{ text: 'Đã hiểu. Tôi sẽ gợi ý ngắn gọn và thêm link.' }]
+                        },
+                        ...recentMessages.map(msg => ({
+                            role: msg.role,
+                            parts: [{ text: msg.content }]
+                        }))
+                    ],
+                    generationConfig: {
+                        maxOutputTokens: 500,
+                        temperature: 0.8,
+                    }
+                });
+
+                const result = await chat.sendMessage(message);
+                botResponse = result.response.text();
+
+            } catch (aiError) {
+                console.error('AI Error, fallback to rule-based:', aiError.message);
+                botResponse = await getRuleBasedResponse(message);
             }
-        });
-
-        // Gửi tin nhắn
-        const result = await chat.sendMessage(message);
-        let botResponse = result.response.text();
-
+        }
 
         chatSession.messages.push(
             { role: 'user', content: message },
@@ -138,14 +186,6 @@ exports.chat = async (req, res) => {
 
     } catch (error) {
         console.error('Chatbot error:', error);
-
-        if (error.message && error.message.includes('429')) {
-            return res.status(429).json({
-                error: 'Hệ thống đang quá tải, vui lòng thử lại sau 1 phút',
-                retryAfter: 60
-            });
-        }
-
         res.status(500).json({
             error: 'Lỗi chatbot',
             details: error.message
@@ -173,7 +213,6 @@ exports.endSession = async (req, res) => {
     }
 };
 
-// Clear cache khi cần (gọi khi update menu/discount)
 exports.clearCache = () => {
     cachedContext = null;
     cacheTimestamp = 0;
