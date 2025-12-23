@@ -58,15 +58,6 @@ const ProfileFormRight = ({ formData, user, roleLabel, isEditing, onChange }) =>
         )}
       </div>
 
-      {/* Role Field (Read-only) */}
-      <div>
-        <p className="mb-2 block text-sm font-semibold text-slate-700">
-          🎭 Vai trò
-        </p>
-        <div className="rounded-xl border border-slate-200 bg-slate-50 px-4 py-3">
-          <p className="text-slate-900 font-medium">{roleLabel}</p>
-        </div>
-      </div>
     </div>
   );
 };

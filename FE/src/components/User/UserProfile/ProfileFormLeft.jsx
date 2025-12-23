@@ -1,4 +1,8 @@
-const ProfileFormLeft = ({ formData, user, isEditing, onChange }) => {
+const ProfileFormLeft = ({ formData, user, role, isEditing, onChange }) => {
+  const isStaff = role === "staff";
+  const fullNameLabel = isStaff ? "Tên nhân viên" : "Tên người dùng";
+  const fullNamePlaceholder = isStaff ? "Nhập tên nhân viên" : "Nhập tên người dùng";
+
   return (
     <div className="space-y-6">
       {/* Username Field */}
@@ -32,7 +36,7 @@ const ProfileFormLeft = ({ formData, user, isEditing, onChange }) => {
           htmlFor="fullName"
           className="mb-2 block text-sm font-semibold text-slate-700"
         >
-          🆔 Tên nhân viên
+          🆔 {fullNameLabel}
         </label>
         {isEditing ? (
           <input
@@ -42,7 +46,7 @@ const ProfileFormLeft = ({ formData, user, isEditing, onChange }) => {
             value={formData.fullName}
             onChange={onChange}
             className="w-full rounded-xl border border-slate-200 bg-white px-4 py-3 text-sm shadow-inner transition focus:border-green-500 focus:outline-none focus:ring-2 focus:ring-green-200"
-            placeholder="Nhập tên nhân viên"
+            placeholder={fullNamePlaceholder}
           />
         ) : (
           <div className="rounded-xl border border-slate-200 bg-slate-50 px-4 py-3">

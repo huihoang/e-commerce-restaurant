@@ -1,11 +1,13 @@
 // ==================== All Import
 import { useCallback, useEffect, useMemo, useState } from "react";
+import { useNavigate } from "react-router-dom";
 import axios from "axios";
 import { useNotification } from "@/contexts/NotificationContext";
 import TableSelectionGrid from "@/components/common/TableSelectionGrid";
 
 const Book = () => {
   const { showSuccess, showError } = useNotification();
+  const navigate = useNavigate();
   // ==================== All Hooks
   const today = useMemo(() => new Date().toISOString().split("T")[0], []);
   const [date, setDate] = useState(() => today);
@@ -307,9 +309,26 @@ const Book = () => {
         throw new Error(message);
       }
 
+      // ✳️ Trả tiền mặt: tạo booking xong → chuyển sang trang kết quả
       if (!shouldUseOnlinePayment) {
-        showSuccess("Đặt bàn thành công! Chúng tôi sẽ liên hệ xác nhận sớm.");
+        const bookingData =
+          typeof responseData === "object"
+            ? responseData.data?.booking || responseData.booking || null
+            : null;
+        const orderId =
+          bookingData?.payment?.orderId ||
+          responseData.data?.payment?.orderId ||
+          "";
+
         resetForm();
+
+        if (orderId) {
+          navigate(`/payment-result?orderId=${orderId}`, { replace: true });
+        } else {
+          showSuccess(
+            "Đặt bàn thành công! Chúng tôi sẽ liên hệ xác nhận sớm."
+          );
+        }
         return;
       }
 
@@ -328,9 +347,6 @@ const Book = () => {
         }
 
         const interval = setInterval(async () => {
-          if (paymentWindow && paymentWindow.closed) {
-            paymentWindow = globalThis.open(paymentUrl, "_blank");
-          }
           if (!paymentWindow) {
             clearInterval(interval);
             return;
@@ -345,7 +361,9 @@ const Book = () => {
               if (paymentWindow && !paymentWindow.closed) {
                 paymentWindow.close();
               }
-              showSuccess("Thanh toán thành công! Hẹn gặp bạn tại nhà hàng.");
+              navigate(`/payment-result?orderId=${payment.orderId}`, {
+                replace: true,
+              });
             }
           } catch (err) {
             console.error("Error checking payment status:", err);

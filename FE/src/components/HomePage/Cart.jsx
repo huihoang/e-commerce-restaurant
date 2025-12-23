@@ -1,6 +1,6 @@
 // ==================== All Import
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { Link } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 import axios from "axios";
 import { getCart, updateQuantity, clearCart, addToCart } from "@/utils/cart";
 import { useNotification } from "@/contexts/NotificationContext";
@@ -8,6 +8,7 @@ import TableSelectionGrid from "@/components/common/TableSelectionGrid";
 
 const Cart = () => {
   const { showError, showSuccess } = useNotification();
+  const navigate = useNavigate();
   const today = useMemo(() => new Date().toISOString().split("T")[0], []);
   const createInitialCustomer = useCallback(
     () => ({
@@ -359,28 +360,32 @@ const Cart = () => {
         let bookingCreated = false;
 
         if (!isOnlinePayment) {
-          showSuccess("Đặt món thành công! Chúng tôi sẽ xác nhận trong ít phút.");
+          const bookingData =
+            typeof data === "object"
+              ? data.data?.booking || data.booking || null
+              : null;
+          const orderId =
+            bookingData?.payment?.orderId ||
+            data.data?.payment?.orderId ||
+            "";
+
           bookingCreated = true;
+
+          if (orderId) {
+            navigate(`/payment-result?orderId=${orderId}`, { replace: true });
+          } else {
+            showSuccess(
+              "Đặt món thành công! Chúng tôi sẽ xác nhận trong ít phút."
+            );
+          }
         } else if (
           data.data &&
           typeof data.data === "object" &&
           data.data.paymentUrl
         ) {
           const { paymentUrl, payment } = data.data;
-          //! cách hiển thị 1: Chuyển hướng trang
-          // nhờ be redirect về đúng trang sau thanh toán
-          // fetch(`${API_BASE_URL}/api/order/returnUrl`, {
-          //   method: "PUT",
-          //   headers: {
-          //     "Content-Type": "application/json",
-          //   },
-          //   body: JSON.stringify({
-          //     return: window.location.href, //`${API_BASE_URL}/api/order/order_status/${payment.orderId}`
-          //   }),
-          // })
-          // window.location.href = paymentUrl;
 
-          //! cách hiển thị 2: Mở VNPAY trong popup
+          // Mở VNPAY trong popup
           let paymentWindow = globalThis.open(paymentUrl, "_blank");
 
           // Kiểm tra nếu popup bị chặn
@@ -391,12 +396,6 @@ const Cart = () => {
 
           // Poll trạng thái đơn hàng mỗi 2s
           const interval = setInterval(async () => {
-            // không cho tắt trừ khi hủy
-            if (paymentWindow && paymentWindow.closed) {
-              paymentWindow = globalThis.open(paymentUrl, "_blank");
-            }
-
-            // Kiểm tra nếu paymentWindow vẫn null
             if (!paymentWindow) {
               clearInterval(interval);
               return;
@@ -407,18 +406,19 @@ const Cart = () => {
                 `${API_BASE_URL}/api/order/order_status/${payment.orderId}`
               ).then((r) => r.json());
               if (res.data?.payment?.paidAt !== null) {
-                console.log("payment status:", res.data.payment);
                 clearInterval(interval);
                 if (paymentWindow && !paymentWindow.closed) {
                   paymentWindow.close();
                 }
+                navigate(`/payment-result?orderId=${payment.orderId}`, {
+                  replace: true,
+                });
               }
             } catch (err) {
               console.error("Error checking payment status:", err);
             }
           }, 2000);
 
-          //todo chuyển trang hiển thị kết quả đặt món, biên lai
           bookingCreated = true;
         } else {
           showError("Không lấy được URL thanh toán!");

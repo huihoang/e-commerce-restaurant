@@ -50,6 +50,7 @@ const bookingSchema = new mongoose.Schema(
       vnp_TransactionStatus: { type: String, default: "01" }, // Trạng thái giao dịch từ VNPAY
       description_TransactionStatus: { type: String, default: "Đang xử lý" }, // Mô tả trạng thái từ VNPAY
     },
+    durationMinutes: { type: Number, default: 60 },
     totalAmount: { type: Number, default: 30000 },
   },
   {

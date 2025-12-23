@@ -1,24 +1,41 @@
 import PropTypes from "prop-types";
 
-const OrderTypeInfoSection = ({ booking }) => {
+const OrderTypeInfoSection = ({ booking, userRole = "user" }) => {
   const orderType = booking.orderType || "dine-in";
   const isPaid = booking.payment?.isPaid || false;
   const deliveryAddress = booking.deliveryAddress || booking.ship?.address;
   const deliveryEmail = booking.deliveryEmail || "";
+  const durationMinutes = Number(booking.durationMinutes || 60);
+  const formatEndTime = () => {
+    if (!booking.time) return null;
+    const [h, m] = booking.time.split(":").map(Number);
+    if (Number.isNaN(h) || Number.isNaN(m)) return null;
+    const total = h * 60 + m + durationMinutes;
+    const normalized = ((total % (24 * 60)) + (24 * 60)) % (24 * 60);
+    const hh = String(Math.floor(normalized / 60)).padStart(2, "0");
+    const mm = String(normalized % 60).padStart(2, "0");
+    return `${hh}:${mm}`;
+  };
+  const endTime = formatEndTime();
   const tableInfo = booking.tableId;
-  const tableLabel =
-    tableInfo?.name ||
-    (tableInfo?.number
-      ? `Bàn ${tableInfo.number}`
-      : booking.tableNumber
-      ? `Bàn ${booking.tableNumber}`
-      : null);
+  let tableLabel = null;
+  if (tableInfo?.name) {
+    tableLabel = tableInfo.name;
+  } else if (tableInfo?.number) {
+    tableLabel = `Bàn ${tableInfo.number}`;
+  } else if (booking.tableNumber) {
+    tableLabel = `Bàn ${booking.tableNumber}`;
+  }
   const tableMeta = [];
   if (tableInfo?.capacity) {
     tableMeta.push(`${tableInfo.capacity} người`);
   }
   if (tableInfo?.area) {
     tableMeta.push(tableInfo.area);
+  }
+  const locationLabel = tableInfo?.location || booking.tableLocation;
+  if (locationLabel) {
+    tableMeta.push(locationLabel);
   }
   return (
     <div className="mb-6 rounded-2xl border border-slate-200 bg-gradient-to-br from-blue-50 to-indigo-50 p-6">
@@ -52,6 +69,23 @@ const OrderTypeInfoSection = ({ booking }) => {
               {tableMeta.join(" • ")}
             </p>
           )}
+          <div className="mt-3 grid gap-2 text-sm text-slate-700 md:grid-cols-2">
+            <div className="rounded-lg bg-blue-50 px-3 py-2">
+              <p className="font-semibold">🕒 Giờ đến</p>
+              <p className="text-slate-900">{booking.time || "N/A"}</p>
+            </div>
+            {endTime && (userRole === "staff" || userRole === "admin") && (
+              <div className="rounded-lg bg-indigo-50 px-3 py-2">
+                <p className="font-semibold">⏳ Giờ trả bàn</p>
+                <p className="text-slate-900">
+                  {endTime}{" "}
+                  <span className="text-xs text-slate-500">
+                    ({durationMinutes} phút)
+                  </span>
+                </p>
+              </div>
+            )}
+          </div>
         </div>
       )}
 
@@ -82,19 +116,24 @@ OrderTypeInfoSection.propTypes = {
     payment: PropTypes.shape({
       isPaid: PropTypes.bool,
     }),
+    time: PropTypes.string,
     tableNumber: PropTypes.oneOfType([PropTypes.string, PropTypes.number]),
     tableId: PropTypes.shape({
       name: PropTypes.string,
       number: PropTypes.oneOfType([PropTypes.string, PropTypes.number]),
       capacity: PropTypes.number,
       area: PropTypes.string,
+      location: PropTypes.string,
     }),
+    tableLocation: PropTypes.string,
     deliveryAddress: PropTypes.string,
     deliveryEmail: PropTypes.string,
     ship: PropTypes.shape({
       address: PropTypes.string,
     }),
+    durationMinutes: PropTypes.oneOfType([PropTypes.number, PropTypes.string]),
   }).isRequired,
+  userRole: PropTypes.oneOf(["user", "staff", "admin"]),
 };
 
 export default OrderTypeInfoSection;

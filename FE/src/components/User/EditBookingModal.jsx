@@ -4,7 +4,6 @@ import axios from "axios";
 import { useNotification } from "@/contexts/NotificationContext";
 import ModalHeader from "./EditBookingModal/ModalHeader";
 import BasicInfoForm from "./EditBookingModal/BasicInfoForm";
-import DiscountCodeSection from "./EditBookingModal/DiscountCodeSection";
 import SelectedDishesList from "./EditBookingModal/SelectedDishesList";
 import MenuListSection from "./EditBookingModal/MenuListSection";
 import ModalActions from "./EditBookingModal/ModalActions";
@@ -194,11 +193,6 @@ const EditBookingModal = ({ booking, onClose, onSave }) => {
         <div className="p-6 overflow-y-auto flex-1 [&::-webkit-scrollbar]:w-2 [&::-webkit-scrollbar-track]:bg-transparent [&::-webkit-scrollbar-thumb]:bg-slate-300 [&::-webkit-scrollbar-thumb]:rounded-full [&::-webkit-scrollbar-thumb]:hover:bg-slate-400">
           <BasicInfoForm booking={updatedBooking} onChange={handleChange} />
 
-          <DiscountCodeSection
-            booking={updatedBooking}
-            onSelectDiscount={handleSelectDiscount}
-            onRemoveDiscount={handleRemoveDiscount}
-          />
 
           <SelectedDishesList
             selectedDishes={updatedBooking.selectedDishes}

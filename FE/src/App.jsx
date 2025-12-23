@@ -27,12 +27,14 @@ import AdminBookingList from "./components/Admin/AdminBookingList";
 import AdminContactList from "./components/Admin/AdminContactList";
 import BookUsers from "./components/User/BookUsers";
 import BookingHistory from "./components/User/BookingHistory";
+import PaymentResult from "./components/User/PaymentResult";
 import UserProfile from "./components/User/UserProfile";
 import UserSettings from "./components/User/UserSettings";
 import BlogDetails from "./components/HomePage/BlogDetails"; // trang chi tiết
 import Cart from "./components/HomePage/Cart";
 import LayoutOne from "./layouts/LayoutOne";
 import { NotificationProvider } from "./contexts/NotificationContext";
+import Chatbot from "./components/Chatbot/Chatbot";
 
 // ==================== Setup Axios Interceptor
 const API_BASE_URL =
@@ -178,84 +180,87 @@ const getRouter = ({
               </ProtectedRoute>
             }
           />
+
+          {/* Kết quả thanh toán (user/staff/admin đều xem được, vẫn nằm trong LayoutOne */}
+          <Route path="/payment-result" element={<PaymentResult />} />
         </Route>
 
-          <Route
-            path="/admin"
-            element={
-              <ProtectedRoute
-                isAllowed={isLoggedIn && isAdminRole(role)}
-                redirectTo="/login"
-              >
-                <AdminDashboard onLogout={handleLogout} />
-              </ProtectedRoute>
-            }
-          >
+        <Route
+          path="/admin"
+          element={
+            <ProtectedRoute
+              isAllowed={isLoggedIn && isAdminRole(role)}
+              redirectTo="/login"
+            >
+              <AdminDashboard onLogout={handleLogout} />
+            </ProtectedRoute>
+          }
+        >
           {/* Admin routes - chỉ admin mới truy cập được */}
           <Route index element={<Navigate to={role === "admin" ? "users" : "book"} replace />} />
-          <Route 
-            path="users" 
+          <Route
+            path="users"
             element={
               <AdminOnlyRoute>
                 <AdminUserManager />
               </AdminOnlyRoute>
-            } 
+            }
           />
-          <Route 
-            path="menu" 
+          <Route
+            path="menu"
             element={
               <AdminOnlyRoute>
                 <AdminMenuManager />
               </AdminOnlyRoute>
-            } 
+            }
           />
-          <Route 
-            path="categories" 
+          <Route
+            path="categories"
             element={
               <AdminOnlyRoute>
                 <AdminCategoryManager />
               </AdminOnlyRoute>
-            } 
+            }
           />
-          <Route 
-            path="tables" 
+          <Route
+            path="tables"
             element={
               <AdminOnlyRoute>
                 <AdminTableManager />
               </AdminOnlyRoute>
-            } 
+            }
           />
-          <Route 
-            path="discounts" 
+          <Route
+            path="discounts"
             element={
               <AdminOnlyRoute>
                 <AdminDiscountManager />
               </AdminOnlyRoute>
-            } 
+            }
           />
-          <Route 
-            path="blog" 
+          <Route
+            path="blog"
             element={
               <AdminOnlyRoute>
                 <AdminBlogList />
               </AdminOnlyRoute>
-            } 
+            }
           />
-          <Route 
-            path="bookings" 
+          <Route
+            path="bookings"
             element={
               <AdminOnlyRoute>
                 <AdminBookingList />
               </AdminOnlyRoute>
-            } 
+            }
           />
-          <Route 
-            path="contacts" 
+          <Route
+            path="contacts"
             element={
               <AdminOnlyRoute>
                 <AdminContactList />
               </AdminOnlyRoute>
-            } 
+            }
           />
           {/* Staff routes - cả admin và staff đều truy cập được */}
           <Route path="book" element={<BookUsers />} />
@@ -322,6 +327,7 @@ const App = () => {
   return (
     <NotificationProvider>
       <RouterProvider router={router} />
+      <Chatbot /> {/* Thêm dòng này */}
     </NotificationProvider>
   );
 };

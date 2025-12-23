@@ -4,6 +4,14 @@ const MenuItem = require('../models/MenuItem')
 const Table = require('../models/Table')
 const moment = require('moment');
 
+const DEFAULT_DURATION_MINUTES = 60;
+
+const timeToMinutes = (timeStr = "") => {
+    const [h, m] = (timeStr || "").split(":").map(Number);
+    if (Number.isNaN(h) || Number.isNaN(m)) return null;
+    return h * 60 + m;
+};
+
 // ==================== Tính tổng tiền
 const calculateTotalAmount = async (selectedDishes = []) => {
     let total = 0;
@@ -47,24 +55,41 @@ const toDateKey = (value = "") => {
 
 const hasTableConflict = async ({
     tableNumber,
+    tableId,
     date,
     time,
+    durationMinutes = DEFAULT_DURATION_MINUTES,
     excludeBookingId,
 }) => {
-    if (!tableNumber || !date) return false;
+    if ((!tableNumber && !tableId) || !date || !time) return false;
     const query = {
-        tableNumber,
         orderType: "dine-in",
         date,
     };
+    if (tableId) {
+        query.tableId = tableId;
+    } else {
+        query.tableNumber = tableNumber;
+    }
     if (excludeBookingId) {
         query._id = { $ne: excludeBookingId };
     }
+
+    const requestedStart = timeToMinutes(time);
+    const requestedEnd = requestedStart != null
+        ? requestedStart + (durationMinutes || DEFAULT_DURATION_MINUTES)
+        : null;
+
+    if (requestedStart === null || requestedEnd === null) return true;
+
     const bookings = await Booking.find(query);
     return bookings.some((booking) => {
-        const pending = !(booking.payment?.isPaid);
-        const sameSlot = booking.time === time;
-        return pending || sameSlot;
+        const start = timeToMinutes(booking.time);
+        if (start == null) return false;
+        const end = start + (booking.durationMinutes || DEFAULT_DURATION_MINUTES);
+
+        const isOverlapping = requestedStart < end && requestedEnd > start;
+        return isOverlapping;
     });
 };
 
@@ -82,12 +107,12 @@ const createBooking = async (req, res) => {
             payment,
             totalAmount: providedTotal,
             orderType,
-            tableId,
             tableNumber,
             deliveryAddress,
             deliveryEmail,
             discount = 0,
             discountCode = null,
+            durationMinutes = DEFAULT_DURATION_MINUTES,
         } = req.body;
 
         const initialShip = ship || {};
@@ -106,7 +131,11 @@ const createBooking = async (req, res) => {
                 });
         }
 
-        const userId = req.user?.id || null; // Có thể không có user nếu là public booking
+        // Staff/Admin đặt bàn cho khách hàng → không lưu userId của staff/admin
+        // Chỉ user thường mới lưu userId của chính họ
+        const userRole = req.user?.role;
+        const isStaffOrAdmin = userRole === "staff" || userRole === "admin";
+        const userId = isStaffOrAdmin ? null : (req.user?.id || null);
 
         let resolvedTable;
         if (isDineIn) {
@@ -128,8 +157,10 @@ const createBooking = async (req, res) => {
             }
             const conflict = await hasTableConflict({
                 tableNumber,
+                tableId: resolvedTable?._id,
                 date: normalizedDate,
                 time,
+                durationMinutes,
             });
             if (conflict) {
                 return res
@@ -160,11 +191,12 @@ const createBooking = async (req, res) => {
             address: initialShip?.address || deliveryAddress || "",
         };
 
-        const paymentInfo = payment || {
+        const paymentInfo = {
             orderId: moment(normalizedDate || date).format('DDHHmmss'),
             isPaid: false,
             paidAt: null,
             paymentMethod: "cash",
+            ...(payment || {}),
         };
 
         const newBooking = new Booking({
@@ -177,6 +209,7 @@ const createBooking = async (req, res) => {
             people: isDineIn ? people : people || 1,
             note,
             orderType: resolvedOrderType,
+            tableId: resolvedOrderType === "dine-in" ? resolvedTable?._id : undefined,
             tableNumber: resolvedOrderType === "dine-in" ? (resolvedTable?.number?.toString() || tableNumber) : undefined,
             deliveryAddress: resolvedOrderType === "takeaway" ? (deliveryAddress || normalizedShip.address) : undefined,
             deliveryEmail: resolvedOrderType === "takeaway" ? deliveryEmail : undefined,
@@ -184,6 +217,7 @@ const createBooking = async (req, res) => {
             discountCode,
             selectedDishes: formattedDishes,
             payment: paymentInfo,
+            durationMinutes: durationMinutes || DEFAULT_DURATION_MINUTES,
             totalAmount: resolvedTotal,
         });
         const savedBooking = await newBooking.save();
@@ -217,7 +251,12 @@ const getBookingHistory = async (req, res) => {
             : { userId: req.user.id };
         
         const bookings = await Booking.find(query)
-            .sort({ createdAt: -1 })
+            .sort({
+                "payment.isPaid": 1, // unpaid first
+                date: -1,
+                time: -1,
+                createdAt: -1,
+            })
             .populate("selectedDishes.dishId")
             .populate("tableId")
             .populate("userId", "name email");
@@ -255,6 +294,7 @@ const updateBooking = async (req, res) => {
             tableId,
             discount = 0,
             discountCode = null,
+            durationMinutes = DEFAULT_DURATION_MINUTES,
         } = req.body;
         const userId = req.user.id;
 
@@ -297,6 +337,7 @@ const updateBooking = async (req, res) => {
             discountCode,
             selectedDishes: formattedDishes,
             totalAmount,
+            durationMinutes: durationMinutes || existingBooking.durationMinutes || DEFAULT_DURATION_MINUTES,
         };
 
         if (existingBooking.orderType === "dine-in") {
@@ -318,9 +359,11 @@ const updateBooking = async (req, res) => {
                     .json({ message: "Số người vượt quá sức chứa của bàn này." });
             }
             const conflict = await hasTableConflict({
+                tableNumber: table.number?.toString() || existingBooking.tableNumber,
                 tableId: table._id,
                 date: normalizedDate,
                 time,
+                durationMinutes: updatePayload.durationMinutes,
                 excludeBookingId: existingBooking._id,
             });
             if (conflict) {
@@ -471,11 +514,9 @@ const updateBookingPay = async (req, res) => {
                 .json({ message: "Không tìm thấy đơn đặt bàn để thanh toán." });
         }
 
-        booking.payment = {
-            ...(booking.payment || {}),
-            isPaid: true,
-            paidAt: new Date(),
-        };
+        booking.payment = booking.payment
+            ? { ...booking.payment, isPaid: true, paidAt: new Date() }
+            : { isPaid: true, paidAt: new Date() };
         await booking.save();
 
         res.json({ message: "Thanh toán thành công!", booking });

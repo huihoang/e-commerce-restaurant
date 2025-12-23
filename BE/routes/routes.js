@@ -12,6 +12,7 @@ const orderRoutes = require("./orderRoutes");
 const categoryRoutes = require("./categoryRoutes");
 const discountRoutes = require("./discountRoutes");
 const tableRoutes = require("./tableRoutes");
+const chatbotRoutes = require('./chatbotRoutes');
 
 router.use("/api", authRoutes);
 router.use("/api/users", userRoutes);
@@ -24,5 +25,5 @@ router.use("/api/order", orderRoutes);
 router.use("/api/categories", categoryRoutes);
 router.use("/api/discounts", discountRoutes);
 router.use("/api/tables", tableRoutes);
-
+router.use('/api/chatbot', chatbotRoutes);
 module.exports = router;

@@ -3,6 +3,14 @@ const Booking = require('../models/Booking');
 const MenuItem = require('../models/MenuItem');
 const Table = require('../models/Table');
 
+const DEFAULT_DURATION_MINUTES = 60;
+
+const timeToMinutes = (timeStr = "") => {
+    const [h, m] = (timeStr || "").split(":").map((v) => Number(v));
+    if (Number.isNaN(h) || Number.isNaN(m)) return null;
+    return h * 60 + m;
+};
+
 const calculateTotalAmount = async (selectedDishes = []) => {
     let total = 0;
     for (const item of selectedDishes) {
@@ -29,7 +37,12 @@ const getAllBooking = async (req, res) => {
     try {
         // Lấy danh sách tất cả các đơn đặt bàn, sắp xếp theo ngày tạo giảm dần
         const bookings = await Booking.find()
-            .sort({ date: -1 })
+            .sort({
+                "payment.isPaid": 1, // unpaid first
+                date: -1,
+                time: -1,
+                createdAt: -1,
+            })
             .populate("selectedDishes.dishId") // Lấy thông tin món ăn
             .populate("tableId")
             .populate("userId", "name email"); // Lấy thông tin người dùng
@@ -98,8 +111,8 @@ const toDateKey = (value = "") => {
     }
 };
 
-const hasTableConflict = async ({ tableId, date, time, excludeBookingId }) => {
-    if (!tableId || !date) return false;
+const hasTableConflict = async ({ tableId, date, time, durationMinutes = DEFAULT_DURATION_MINUTES, excludeBookingId }) => {
+    if (!tableId || !date || !time) return false;
     const query = {
         tableId,
         orderType: "dine-in",
@@ -108,11 +121,20 @@ const hasTableConflict = async ({ tableId, date, time, excludeBookingId }) => {
     if (excludeBookingId) {
         query._id = { $ne: excludeBookingId };
     }
+
+    const requestedStart = timeToMinutes(time);
+    const requestedEnd = requestedStart != null
+        ? requestedStart + (durationMinutes || DEFAULT_DURATION_MINUTES)
+        : null;
+    if (requestedStart == null || requestedEnd == null) return true;
+
     const bookings = await Booking.find(query);
     return bookings.some((booking) => {
-        const pending = !(booking.payment?.isPaid);
-        const sameSlot = booking.time === time;
-        return pending || sameSlot;
+        const start = timeToMinutes(booking.time);
+        if (start == null) return false;
+        const end = start + (booking.durationMinutes || DEFAULT_DURATION_MINUTES);
+        const isOverlapping = requestedStart < end && requestedEnd > start;
+        return isOverlapping;
     });
 };
 
@@ -132,6 +154,7 @@ const updateBooking = async (req, res) => {
             orderType,
             deliveryAddress,
             deliveryEmail,
+            durationMinutes,
         } = req.body;
 
         const booking = await Booking.findById(req.params.bookingId);
@@ -173,6 +196,12 @@ const updateBooking = async (req, res) => {
             booking.discountCode = discountCode || null;
         }
 
+        if (durationMinutes !== undefined) {
+            booking.durationMinutes = Number(durationMinutes) || DEFAULT_DURATION_MINUTES;
+        } else if (!booking.durationMinutes) {
+            booking.durationMinutes = DEFAULT_DURATION_MINUTES;
+        }
+
         if (targetOrderType === "dine-in") {
             const nextTableId = tableId || booking.tableId;
             if (!nextTableId) {
@@ -195,6 +224,7 @@ const updateBooking = async (req, res) => {
                 tableId: table._id,
                 date: booking.date,
                 time: booking.time,
+                durationMinutes: booking.durationMinutes || DEFAULT_DURATION_MINUTES,
                 excludeBookingId: booking._id,
             });
             if (conflict) {

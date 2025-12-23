@@ -1,5 +1,6 @@
 // controllers/menuController.js
 const MenuItem = require('../models/MenuItem')
+const chatbotController = require('../controllers/chatbotController');
 
 const getMenuItems = async (req, res) => {
     try {
@@ -23,6 +24,7 @@ const getMenuItem = async (req, res) => {
 const updateMenuItem = async (req, res) => {
     try {
         const updated = await MenuItem.findByIdAndUpdate(req.params.id, req.body, { new: true })
+        chatbotController.clearCache();
         res.json(updated)
     } catch (err) {
         res.status(500).json({ error: 'Lỗi khi cập nhật món' })
@@ -37,7 +39,7 @@ const deleteMenuItem = async (req, res) => {
         res.status(500).json({ error: 'Lỗi khi xoá món' })
     }
 };
-    
+
 module.exports = {
     getMenuItems,
     getMenuItem,

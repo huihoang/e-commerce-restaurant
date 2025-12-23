@@ -4,15 +4,17 @@ import EditBookingModal from "./EditBookingModal";
 import PaymentModal from "./PaymentModal";
 import BookingDetail from "./BookingDetail";
 import Pagination from "@/components/common/Pagination";
-import HeroStatsCard from "./BookingHistory/HeroStatsCard";
 import BookingTabs from "./BookingHistory/BookingTabs";
 import BookingFilters from "./BookingHistory/BookingFilters";
 import BookingHistoryList from "./BookingHistory/BookingHistoryList";
+import HeroStatsCard from "./BookingHistory/HeroStatsCard";
 import ConfirmModal from "@/components/common/ConfirmModal";
 import { useNotification } from "@/contexts/NotificationContext";
 
 const BookingHistory = () => {
   const { showSuccess, showError } = useNotification();
+  const role = localStorage.getItem("role") || "user";
+  const isStaffOrAdmin = role === "staff" || role === "admin";
   const [bookings, setBookings] = useState([]);
   const [loading, setLoading] = useState(true);
   const [isModalOpen, setIsModalOpen] = useState(false);
@@ -22,7 +24,7 @@ const BookingHistory = () => {
   const [activeTab, setActiveTab] = useState("dine-in");
   const [searchTerm, setSearchTerm] = useState("");
   const [paymentFilter, setPaymentFilter] = useState("all");
-  const [sortBy, setSortBy] = useState("newest");
+  const [sortBy, setSortBy] = useState("none");
   const [currentPage, setCurrentPage] = useState(1);
   const ITEMS_PER_PAGE = 8;
   const [confirmModal, setConfirmModal] = useState({
@@ -37,11 +39,13 @@ const BookingHistory = () => {
       booking.orderType || (booking.ship?.isShip ? "takeaway" : "dine-in");
     const normalizedTableNumber =
       booking.tableId?.number?.toString() || booking.tableNumber || "";
+    const tableLocation = booking.tableId?.location || booking.tableLocation || "";
     return {
       ...booking,
       orderType: derivedOrderType,
       discount: booking.discount || 0,
       tableNumber: normalizedTableNumber,
+      tableLocation,
       deliveryAddress:
         booking.deliveryAddress || booking.ship?.address || booking.note || "",
     };
@@ -57,12 +61,8 @@ const BookingHistory = () => {
           },
         });
 
-        const sortedBookings = res.data
-          .map(normalizeBooking)
-          .sort(
-          (a, b) => new Date(b.createdAt) - new Date(a.createdAt)
-        );
-      setBookings(sortedBookings);
+        const normalized = res.data.map(normalizeBooking);
+      setBookings(normalized);
       } catch (err) {
         console.error("❌ Lỗi khi lấy lịch sử đặt bàn:", err.message);
     } finally {
@@ -74,7 +74,11 @@ const BookingHistory = () => {
     fetchBookings();
   }, [fetchBookings]);
 
-  const calculateTotalAmount = (selectedDishes, discount = 0) => {
+  const calculateTotalAmount = (booking) => {
+    const selectedDishes = booking.selectedDishes || [];
+    const discount = Number(booking.discount || 0);
+    const storedTotal = Number(booking.totalAmount || 0);
+
     // Tính tổng tiền với giảm giá của từng món
     let originalSubtotal = 0;
     let itemDiscountAmount = 0;
@@ -95,6 +99,17 @@ const BookingHistory = () => {
       
       return total + finalPrice;
     }, 0);
+    
+    // Nếu không có món ăn (chỉ đặt bàn) thì hiển thị tổng đã lưu
+    if (selectedDishes.length === 0) {
+      return {
+        originalSubtotal: storedTotal,
+        itemDiscountAmount: 0,
+        subtotal: storedTotal,
+        discountCodeAmount: 0,
+        total: storedTotal,
+      };
+    }
     
     // Áp dụng mã giảm giá (nếu có)
     const discountCodeAmount = (subtotal * discount) / 100;
@@ -120,10 +135,7 @@ const BookingHistory = () => {
   };
 
   const handleSaveBooking = (updatedBooking) => {
-    const amounts = calculateTotalAmount(
-      updatedBooking.selectedDishes,
-      updatedBooking.discount || 0
-    );
+    const amounts = calculateTotalAmount(updatedBooking);
     updatedBooking.totalAmount = amounts.total;
 
     const normalized = normalizeBooking(updatedBooking);
@@ -219,10 +231,20 @@ const BookingHistory = () => {
       });
     }
 
-    if (sortBy === "newest") {
-      result.sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
+    const toDateTime = (b) =>
+      new Date(`${b.date || b.createdAt || ""}T${b.time || "00:00"}`);
+
+    if (sortBy === "unpaid-latest") {
+      result.sort((a, b) => {
+        const aPaid = a.payment?.isPaid || false;
+        const bPaid = b.payment?.isPaid || false;
+        if (aPaid !== bPaid) return aPaid ? 1 : -1; // unpaid first
+        return toDateTime(b) - toDateTime(a); // newest time first
+      });
+    } else if (sortBy === "newest") {
+      result.sort((a, b) => toDateTime(b) - toDateTime(a));
     } else if (sortBy === "oldest") {
-      result.sort((a, b) => new Date(a.createdAt) - new Date(b.createdAt));
+      result.sort((a, b) => toDateTime(a) - toDateTime(b));
     } else if (sortBy === "amount-high") {
       result.sort((a, b) => (b.totalAmount || 0) - (a.totalAmount || 0));
     } else if (sortBy === "amount-low") {
@@ -283,7 +305,9 @@ const BookingHistory = () => {
   return (
     <section className="bg-slate-100">
       <div className="mx-auto max-w-6xl px-4 py-10">
-      <HeroStatsCard stats={stats} onRefresh={fetchBookings} />
+      {isStaffOrAdmin && (
+        <HeroStatsCard stats={stats} onRefresh={fetchBookings} />
+      )}
 
       <BookingTabs activeTab={activeTab} onTabChange={setActiveTab} />
 
@@ -310,6 +334,7 @@ const BookingHistory = () => {
         onEdit={handleEditBooking}
         onDelete={openDeleteModal}
         onPayment={handleOpenPaymentModal}
+        userRole={role}
       />
 
       {filteredAndSortedBookings.length > 0 && (

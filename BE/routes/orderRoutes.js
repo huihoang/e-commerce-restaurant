@@ -3,10 +3,11 @@
  */
 const { Router } = require('express');
 const orderController = require('../controllers/orderController');
+const authenticateTokenOptional = require('../middleware/authenticateTokenOptional');
 
 let router = Router();
 
-router.post('/create_payment_url', orderController.createPaymentUrl);
+router.post('/create_payment_url', authenticateTokenOptional, orderController.createPaymentUrl);
 
 router.get('/vnpay_return', orderController.vnpayReturn);
 
