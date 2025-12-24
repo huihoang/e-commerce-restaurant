@@ -15,17 +15,74 @@ const PaymentModal = ({ booking, onClose, onPaymentSuccess }) => {
   const handlePayment = async () => {
     const token = localStorage.getItem("token");
     try {
-      const res = await axios.patch(
-        `${API_BASE_URL}/api/bookings/${booking._id}/pay`,
-        { isPaid: true },
-        {
-          headers: {
-            Authorization: `Bearer ${token}`,
-          },
-        }
-      );
-      showSuccess("Thanh toán thành công!");
-      onPaymentSuccess(res.data);
+
+      console.log(booking);
+      booking = { ...booking, bankCode: "", language: "vn" };
+      const headers = {
+        "Content-Type": "application/json",
+        ...(token ? { Authorization: `Bearer ${token}` } : {}),
+      };
+      fetch(`${API_BASE_URL}/api/order/create_payment_url`, {
+        method: "POST",
+        headers,
+        body: JSON.stringify(booking),
+      })
+        .then(async (r) => {
+          const contentType = r.headers.get("content-type") || "";
+          if (!r.ok) {
+            const text = await r.text();
+            throw new Error(`Server error ${r.status}: ${text}`);
+          }
+          if (contentType.includes("application/json")) {
+            return r.json();
+          }
+          return r.text();
+        })
+        .then((data) => {
+          const deleteBookingAfterPayment = async () => {
+            // ❗ CHỈ LÚC NÀY MỚI XÓA / UPDATE BOOKING
+            await fetch(`${API_BASE_URL}/api/bookings/${booking._id}`, {
+              method: "DELETE",
+              headers: {
+                Authorization: `Bearer ${token}`,
+              },
+            });
+          };
+          deleteBookingAfterPayment();
+
+          const { paymentUrl, payment } = data.data;
+
+          let paymentWindow = window.open(paymentUrl, "_blank");
+          if (!paymentWindow) {
+            showError("Popup bị chặn!");
+            return;
+          }
+
+
+          const interval = setInterval(async () => {
+            try {
+              const res = await fetch(
+                `${API_BASE_URL}/api/order/order_status/${payment.orderId}`
+              ).then(r => r.json());
+
+              if (res.data?.payment?.paidAt) {
+                clearInterval(interval);
+
+                if (!paymentWindow.closed) {
+                  paymentWindow.close();
+                }
+
+                window.location.href = `/payment-result?orderId=${payment.orderId}`;
+                showSuccess("Thanh toán thành công!");
+                onPaymentSuccess();
+              }
+            } catch (err) {
+              console.error(err);
+            }
+          }, 5000);
+        });
+
+
     } catch (err) {
       console.error("❌ Lỗi khi thanh toán:", err.message);
       showError("Lỗi khi thanh toán. Vui lòng thử lại!");
@@ -47,25 +104,25 @@ const PaymentModal = ({ booking, onClose, onPaymentSuccess }) => {
       const price = Number(dishItem.dishId?.price) || 0;
       const quantity = Number(dishItem.quantity) || 0;
       const discountPercent = Number(dishItem.dishId?.discountPercent) || 0;
-      
+
       const originalPrice = price * quantity;
       originalSubtotal += originalPrice;
-      
+
       const discountedPrice = price * (1 - discountPercent / 100);
       const finalPrice = discountedPrice * quantity;
-      
+
       if (discountPercent > 0) {
         itemDiscountAmount += originalPrice - finalPrice;
       }
-      
+
       return total + finalPrice;
     }, 0);
-    
+
     // Áp dụng mã giảm giá (nếu có)
     const discountPercent = booking.discount || 0;
     const discountCodeAmount = (subtotal * discountPercent) / 100;
     const total = Math.max(0, subtotal - discountCodeAmount);
-    
+
     return {
       originalSubtotal,
       itemDiscountAmount,

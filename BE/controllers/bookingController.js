@@ -162,7 +162,7 @@ const createBooking = async (req, res) => {
                 time,
                 durationMinutes,
             });
-            if (conflict) {
+            if (conflict && payment?.isPaid === true) {
                 return res
                     .status(409)
                     .json({ message: "Bàn này đã được đặt trong khung giờ hoặc đang chờ thanh toán." });
